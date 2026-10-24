@@ -1,0 +1,12 @@
+[package]
+name = "rust-lab-server"
+version = "1.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+axum = "0.8"
+http-body-util = "0.1"
+percent-encoding = "2"
+serde_json = "1"
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }

@@ -1,0 +1,128 @@
+﻿/* Overview styles. Keep overrides in responsive.css. */
+.overview-page {
+  max-width: 1450px;
+  margin: 0 auto;
+  padding: 36px 40px 0;
+}
+.overview-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+.overview-heading h1 {
+  font-size: 2.75rem;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+.overview-heading p {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+.overview-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: var(--green);
+  color: #fbfcf7;
+  padding: 13px 18px;
+  border-radius: 5px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.primary:hover {
+  background: #193c2d;
+  transform: translateY(-1px);
+}
+.primary span {
+  font-size: var(--text-lg);
+}
+.text-button {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  padding: 7px 0;
+}
+.text-button:hover {
+  color: var(--orange);
+}
+.chapter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 18px;
+}
+.chapter-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 24px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s,
+    border-color 0.2s;
+}
+.chapter-card:hover {
+  transform: translateY(-3px);
+  border-color: #bac8af;
+  box-shadow: 0 8px 22px #23382808;
+}
+.chapter-card h2 {
+  font-size: 1.5rem;
+  font-weight: 650;
+  line-height: 1.4;
+  margin: 0 0 14px;
+  letter-spacing: -0.5px;
+}
+.chapter-number {
+  color: var(--orange);
+  font-variant-numeric: tabular-nums;
+  margin-right: 4px;
+}
+.chapter-card p {
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--muted);
+  margin-bottom: 24px;
+  flex: 1;
+}
+.card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  color: var(--muted);
+  padding-top: 14px;
+  border-top: 1px solid #edf0e5;
+  width: 100%;
+}
+.card-arrow {
+  color: #71855d;
+  font-size: var(--text-lg);
+}
+.page-footer {
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 32px;
+  padding: 20px 0 25px;
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  color: var(--muted);
+  gap: 12px;
+}

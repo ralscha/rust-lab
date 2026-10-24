@@ -1,0 +1,84 @@
+/* Reference styles. Keep overrides in responsive.css. */
+.reference-page {
+  max-width: 1200px;
+  margin: auto;
+  padding: 50px;
+}
+.reference-page > h1 {
+  font-size: 2.75rem;
+  margin: 0 0 28px;
+}
+.reference-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.reference-grid > section {
+  min-width: 0;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 26px;
+}
+.reference-grid h2 {
+  font-size: 1.625rem;
+  margin: 0 0 23px;
+}
+.reference-grid p {
+  font-size: var(--text-base);
+  line-height: 1.9;
+  color: #758569;
+}
+.reference-grid dl {
+  margin: 0;
+}
+.reference-grid dt {
+  overflow-wrap: anywhere;
+  font-family: Consolas, monospace;
+  font-size: var(--text-sm);
+  color: #597347;
+  margin-top: 16px;
+}
+.reference-grid dd {
+  font-size: var(--text-sm);
+  margin: 4px 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.reference-list {
+  padding-left: 18px;
+  font-size: var(--text-base);
+  line-height: 1.9;
+  color: #728464;
+}
+.reference-list li {
+  margin-bottom: 13px;
+  padding-left: 5px;
+}
+.reference-callout {
+  background: #edf2e5;
+  padding: 17px;
+  border-radius: 5px;
+  font-size: var(--text-sm);
+}
+.reference-callout p {
+  font-size: var(--text-sm);
+  margin: 8px 0 0;
+}
+.resource-links a {
+  display: block;
+  border-bottom: 1px solid #e5eadf;
+  padding: 14px 0;
+}
+.resource-links strong {
+  display: block;
+  font-size: var(--text-sm);
+  color: #617a4e;
+  font-weight: 500;
+}
+.resource-links span {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  margin-top: 6px;
+}

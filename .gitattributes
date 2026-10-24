@@ -1,0 +1,3 @@
+runner/*.sh text eol=lf
+runner/Dockerfile text eol=lf
+deployment/* text eol=lf

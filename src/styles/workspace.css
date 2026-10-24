@@ -1,0 +1,242 @@
+/* Workspace styles. Keep overrides in responsive.css. */
+.workspace-page {
+  padding: 27px 35px 50px;
+  max-width: 1650px;
+  margin: auto;
+}
+.workspace-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+.breadcrumbs {
+  display: flex;
+  gap: 10px;
+  font-size: var(--text-xs);
+  color: #909782;
+  align-items: center;
+}
+.breadcrumbs button {
+  padding: 0;
+  font-size: var(--text-xs);
+  color: #66765a;
+}
+.lesson-heading {
+  padding: 27px 0 22px;
+  max-width: 900px;
+}
+.lesson-heading h1 {
+  font-size: 2.75rem;
+  line-height: 1.2;
+  margin: 0 0 14px;
+}
+.lesson-heading > p {
+  font-size: var(--text-base);
+  color: #7f8776;
+  max-width: 700px;
+  margin: 0;
+}
+.learning-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(400px, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+.reader-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  gap: 24px;
+  margin-bottom: 26px;
+}
+.reader-tabs button {
+  font-size: var(--text-sm);
+  padding: 14px 0;
+  color: #879078;
+  position: relative;
+  white-space: nowrap;
+}
+.reader-tabs button.active {
+  color: var(--green);
+  font-weight: 600;
+}
+.reader-tabs button.active:after {
+  position: absolute;
+  content: '';
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  background: var(--green);
+  height: 2px;
+}
+.objectives {
+  padding: 19px 20px 14px;
+  background: #ecf0e4;
+  border: 1px solid #e2e8d6;
+  border-radius: 5px;
+  margin-bottom: 28px;
+}
+.objectives p {
+  display: flex;
+  gap: 10px;
+  font-size: var(--text-sm);
+  color: #6b7b5a;
+  line-height: 1.6;
+  margin: 9px 0;
+}
+.objectives p > span {
+  color: #9aaa87;
+}
+.lesson-section {
+  margin-bottom: 27px;
+}
+.lesson-section h2 {
+  font-size: 1.625rem;
+  font-weight: 650;
+  letter-spacing: -0.5px;
+  margin-bottom: 13px;
+}
+.lesson-section p,
+.exercise-intro > p,
+.notes-panel > p {
+  font-size: var(--text-base);
+  line-height: 1.8;
+  color: #52614d;
+  white-space: pre-line;
+}
+.inline-code {
+  padding: 18px;
+  background: #eeefe7;
+  border: 1px solid #e0e5d5;
+  border-radius: 5px;
+  font-size: var(--text-sm);
+  line-height: 1.9;
+  overflow: auto;
+  max-width: 100%;
+  tab-size: 4;
+}
+.quiz {
+  border: 1px solid var(--line);
+  background: var(--white);
+  padding: 22px;
+  border-radius: 6px;
+  margin: 32px 0 20px;
+}
+.quiz h3 {
+  font-size: var(--text-lg);
+  line-height: 1.6;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  margin: 8px 0 18px;
+}
+.quiz-options {
+  display: grid;
+  gap: 8px;
+}
+.quiz-options button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  font-size: var(--text-sm);
+  border: 1px solid #e1e7d8;
+  border-radius: 4px;
+  padding: 10px;
+  color: #6b785e;
+  line-height: 1.7;
+}
+.quiz-options button > span {
+  font-size: var(--text-xs);
+  border: 1px solid #dee5d3;
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+.quiz-options button.chosen {
+  border-color: #c98b64;
+  background: #f9f0e7;
+}
+.quiz-options button.correct {
+  background: #edf4e5;
+  border-color: #8aa975;
+}
+.quiz-feedback {
+  font-size: var(--text-sm);
+  line-height: 1.8;
+  background: #f6eee4;
+  padding: 12px;
+  margin: 16px 0 0;
+  border-radius: 4px;
+  color: #8d6347;
+}
+.quiz-feedback.correct {
+  background: #edf3e7;
+  color: #5c7848;
+}
+.challenge-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #e7ecdd;
+  border: 1px solid #dce5d0;
+  padding: 18px;
+  border-radius: 5px;
+  text-align: left;
+  width: 100%;
+}
+.challenge-cta strong {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  display: block;
+}
+.challenge-cta > span:last-child {
+  font-size: 25px;
+  color: #6c8359;
+}
+.lesson-references {
+  margin: 28px 0;
+  border-top: 1px solid var(--line);
+  padding-top: 21px;
+}
+.lesson-references a {
+  display: block;
+  color: #617b4d;
+  font-size: var(--text-sm);
+  margin-top: 10px;
+}
+.complete-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.primary.completed {
+  background: #e7efdc;
+  color: #587444;
+}
+.lesson-pagination {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.secondary {
+  font-size: var(--text-sm);
+  padding: 10px 13px;
+  border: 1px solid #d6dfca;
+  border-radius: 4px;
+  color: #607850;
+}
+.secondary:hover {
+  background: #edf1e6;
+}
+
+.lesson-reader {
+  min-width: 0;
+}
+.objectives h2,
+.lesson-references h2 {
+  font-size: var(--text-lg);
+  margin: 0 0 12px;
+  letter-spacing: -0.3px;
+}

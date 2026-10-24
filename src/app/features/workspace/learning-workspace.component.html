@@ -1,0 +1,27 @@
+<div class="workspace-page" [class.standalone-playground]="vm.view() === 'playground'">
+  <div class="workspace-heading">
+    <div class="breadcrumbs">
+      <button (click)="vm.navigate('overview')">
+        {{ vm.view() === 'playground' ? 'rust-lab' : 'The course' }}</button
+      ><span>/</span
+      ><span>{{ vm.view() === 'playground' ? 'Playground' : vm.selectedModule().title }}</span>
+    </div>
+    <button class="text-button" (click)="vm.share()">Copy link ↗</button>
+  </div>
+  @if (vm.view() === 'lesson') {
+    <div class="lesson-heading">
+      <h1>{{ vm.selected().title }}</h1>
+      <p>{{ vm.selected().summary }}</p>
+    </div>
+  } @else {
+    <div class="lesson-heading">
+      <h1>Playground</h1>
+    </div>
+  }
+  <div class="learning-workspace">
+    @if (vm.view() === 'lesson') {
+      <app-lesson-reader />
+    }
+    <app-playground-panel />
+  </div>
+</div>

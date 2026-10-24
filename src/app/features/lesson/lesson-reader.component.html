@@ -1,0 +1,68 @@
+<article class="lesson-reader">
+  <nav class="reader-tabs" aria-label="Lesson sections">
+    <button [class.active]="vm.activeTab() === 'lesson'" (click)="vm.setTab('lesson')">
+      Lesson</button
+    ><button [class.active]="vm.activeTab() === 'exercise'" (click)="vm.setTab('exercise')">
+      Exercise</button
+    ><button [class.active]="vm.activeTab() === 'notes'" (click)="vm.setTab('notes')">Notes</button>
+  </nav>
+  @if (vm.activeTab() === 'lesson') {
+    <div class="objectives">
+      <h2>Objectives</h2>
+      @for (objective of vm.selected().objectives; track objective) {
+        <p><span>↳</span>{{ objective }}</p>
+      }
+    </div>
+    @for (section of vm.selected().sections; track $index) {
+      <section class="lesson-section">
+        <h2>{{ section.title }}</h2>
+        @for (paragraph of section.body; track $index) {
+          <p>{{ paragraph }}</p>
+        }
+        @if (section.code) {
+          <pre class="inline-code"><code>{{ section.code }}</code></pre>
+        }
+      </section>
+    }
+    @if (vm.selected().expectedOutput) {
+      <section class="lesson-section">
+        <h2>Example output</h2>
+        <pre class="target-output">{{ vm.selected().expectedOutput }}</pre>
+      </section>
+    }
+    <app-lesson-quiz />
+    <button class="challenge-cta" (click)="vm.setTab('exercise')">
+      <strong>Open exercise</strong><span>→</span>
+    </button>
+  }
+  @if (vm.activeTab() === 'exercise') {
+    <app-lesson-exercise />
+  }
+  @if (vm.activeTab() === 'notes') {
+    <app-lesson-notes />
+  }
+  <div class="lesson-references">
+    <h2>Documentation</h2>
+    @for (reference of vm.selected().references; track reference.url) {
+      <a [href]="reference.url" target="_blank" rel="noopener noreferrer"
+        >{{ reference.label }} ↗</a
+      >
+    }
+  </div>
+  <div class="complete-row">
+    <button
+      class="primary"
+      [class.completed]="vm.completed().includes(vm.selectedId())"
+      (click)="vm.toggleComplete()"
+    >
+      {{ vm.completed().includes(vm.selectedId()) ? '✓ Lesson completed' : 'Mark as complete' }}
+    </button>
+  </div>
+  <div class="lesson-pagination">
+    <button class="secondary" [disabled]="!vm.hasAdjacent(-1)" (click)="vm.adjacent(-1)">
+      ← Previous lesson</button
+    ><button class="secondary" [disabled]="!vm.hasAdjacent(1)" (click)="vm.adjacent(1)">
+      Next lesson →
+    </button>
+  </div>
+</article>

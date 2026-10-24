@@ -1,0 +1,35 @@
+[Unit]
+Description=Rust Lab course and local Rust runner
+Wants=network-online.target
+Requires=docker.service
+After=network-online.target docker.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=rust-lab
+Group=rust-lab
+SupplementaryGroups=docker
+WorkingDirectory=/opt/rust-lab/current
+ExecStart=/opt/rust-lab/current/bin/rust-lab-server
+Environment=HOST=127.0.0.1
+Environment=PORT=3001
+Environment=STATIC_ROOT=/opt/rust-lab/current/frontend
+Environment=ALLOWED_ORIGINS=https://rust-lab.rasc.ch
+Environment=DOCKER_HOST=unix:///var/run/docker.sock
+Environment=DOCKER_CONFIG=/var/lib/rust-lab/docker
+EnvironmentFile=/opt/rust-lab/current/runner.env
+StateDirectory=rust-lab
+Restart=on-failure
+RestartSec=3s
+TimeoutStopSec=45s
+KillSignal=SIGTERM
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target

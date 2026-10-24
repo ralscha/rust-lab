@@ -1,0 +1,231 @@
+/* Playground styles. Keep overrides in responsive.css. */
+.playground-panel {
+  position: sticky;
+  top: 110px;
+  min-width: 0;
+  border: 1px solid #d5ddd0;
+  border-radius: 7px;
+  background: var(--white);
+  overflow: hidden;
+}
+.playground-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 15px;
+  background: #e9eddf;
+  gap: 10px;
+  border-bottom: 1px solid #d6dfcb;
+}
+.playground-title > div {
+  display: flex;
+  gap: 8px;
+}
+.playground-title strong {
+  font-size: var(--text-sm);
+  font-weight: 550;
+}
+.editor-topline {
+  background: #1c251f;
+  color: #a6b39e;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: var(--text-xs);
+  border-bottom: 1px solid #ffffff0b;
+}
+.editor-topline > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.file-icon {
+  color: #d08a61;
+  font-weight: bold;
+}
+.editor-topline button {
+  font-size: var(--text-sm);
+  color: #9eae93;
+  padding: 2px 7px;
+}
+.editor-topline button:hover {
+  color: #d1dec6;
+}
+.editor-host {
+  max-height: 460px;
+  overflow: auto;
+}
+.cm-editor {
+  min-width: 0;
+}
+.cm-scroller {
+  max-height: 460px;
+}
+.runner-controls {
+  display: flex;
+  gap: 10px;
+  background: #222d24;
+  padding: 11px 13px;
+  border-top: 1px solid #ffffff0a;
+  flex-wrap: wrap;
+}
+.runner-controls label {
+  color: #8b9c7d;
+  font-size: var(--text-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 90px;
+}
+.runner-controls select {
+  border: 1px solid #42523b;
+  background: #273327;
+  color: #bbc9ac;
+  border-radius: 3px;
+  font-size: var(--text-sm);
+  width: 100%;
+  padding: 5px;
+  outline-offset: 0;
+}
+.run-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 13px 14px;
+  background: #202923;
+  border-top: 1px solid #ffffff08;
+}
+.run-bar > span {
+  font-family: Consolas, monospace;
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  color: #8c9d80;
+}
+.run-button {
+  font-size: var(--text-sm);
+  background: #dce8c5;
+  color: #334b28;
+  padding: 9px 14px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.run-button > span {
+  font-size: 16px;
+}
+.run-button:hover {
+  background: #eff7e1;
+}
+.output-panel {
+  background: #f6f7f0;
+  min-height: 160px;
+}
+.output-tabs {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 0 15px;
+  border-bottom: 1px solid #e3e8da;
+}
+.output-tabs button {
+  font-size: var(--text-sm);
+  color: #8c997f;
+  padding: 12px 0;
+  border-bottom: 2px solid transparent;
+}
+.output-tabs button.active {
+  color: #597445;
+  border-bottom-color: #778e63;
+}
+.run-status {
+  font-size: var(--text-xs);
+  color: #77925f;
+  margin-left: auto;
+}
+.run-status.failed {
+  color: #b35e3c;
+}
+.output-placeholder {
+  padding: 25px 18px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  font-size: var(--text-xs);
+  color: #9ba58e;
+  line-height: 1.9;
+}
+.output-placeholder > span {
+  font-size: 26px;
+  color: #9eaf8a;
+}
+.output-placeholder p {
+  margin: 0;
+}
+.output-text {
+  font-size: var(--text-sm);
+  line-height: 1.8;
+  color: #526c41;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 18px;
+  margin: 0;
+  max-height: 300px;
+  overflow: auto;
+}
+.runner-error {
+  padding: 18px;
+  color: #a25938;
+  font-size: var(--text-sm);
+}
+.runner-error p {
+  margin: 8px 0;
+}
+.runner-error small {
+  font-size: var(--text-xs);
+}
+.playground-footnote {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  padding: 12px 14px;
+  border-top: 1px solid #e3e8da;
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  color: #909c80;
+}
+.playground-footnote .status-dot {
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+}
+.playground-footnote a {
+  text-decoration: underline;
+}
+.standalone-playground {
+  max-width: 1100px;
+}
+.standalone-playground .learning-workspace {
+  display: block;
+}
+.standalone-playground .playground-panel {
+  position: static;
+}
+.standalone-playground .editor-host,
+.standalone-playground .cm-scroller {
+  max-height: 600px;
+}
+.standalone-playground .cm-editor {
+  min-height: 350px;
+}
+.standalone-playground .runner-controls {
+  justify-content: flex-start;
+}
+.standalone-playground .runner-controls label {
+  max-width: 125px;
+}

@@ -1,0 +1,45 @@
+<div class="output-panel" aria-live="polite" aria-atomic="true">
+  <div class="output-tabs">
+    <button [class.active]="vm.outputTab() === 'output'" (click)="vm.outputTab.set('output')">
+      Output</button
+    ><button
+      [class.active]="vm.outputTab() === 'diagnostics'"
+      (click)="vm.outputTab.set('diagnostics')"
+    >
+      Compiler {{ vm.result()?.stderr ? '•' : '' }}
+    </button>
+    @if (vm.result(); as runResult) {
+      <span class="run-status" [class.failed]="!runResult.success"
+        >{{ runResult.success ? '✓ Finished' : '× Failed' }}
+        @if (runResult.elapsedMs !== undefined) {
+          · {{ (runResult.elapsedMs / 1000).toFixed(1) }}s
+        }
+      </span>
+    }
+  </div>
+  @if (vm.error()) {
+    <div class="runner-error">
+      <strong>Couldn’t reach a result</strong>
+      <p>{{ vm.error() }}</p>
+      <small>Make sure the backend is running and has internet access.</small>
+    </div>
+  } @else if (vm.busy()) {
+    <div class="output-placeholder">
+      <span class="running-dot"></span> Compiling and running your Rust…
+    </div>
+  } @else if (vm.result(); as runResult) {
+    <pre class="output-text">{{
+      vm.outputTab() === 'output'
+        ? runResult.stdout ||
+          (runResult.success
+            ? 'Program finished with no output.'
+            : 'No program output. See the Compiler tab.')
+        : runResult.stderr || 'No compiler diagnostics.'
+    }}</pre>
+  } @else {
+    <div class="output-placeholder">
+      <span>⌁</span>
+      <p>Run code to see output.</p>
+    </div>
+  }
+</div>

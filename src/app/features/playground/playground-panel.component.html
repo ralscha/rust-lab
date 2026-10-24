@@ -1,0 +1,55 @@
+<aside class="playground-panel" aria-label="Interactive Rust playground">
+  <div class="playground-title">
+    <div>
+      <strong>{{
+        vm.view() === 'playground'
+          ? 'Rust editor'
+          : vm.editorTab() === 'exercise'
+            ? 'Exercise code'
+            : 'Example code'
+      }}</strong>
+    </div>
+  </div>
+  <div class="editor-topline">
+    <span><span class="file-icon">R</span> main.rs</span>
+    <div>
+      <button (click)="vm.formatCode()" [disabled]="vm.busy() || vm.formatting()">
+        {{ vm.formatting() ? 'Formatting…' : 'Format' }}</button
+      ><button
+        (click)="vm.resetCode()"
+        [disabled]="vm.busy() || vm.formatting()"
+        title="Restore the original code"
+      >
+        Reset</button
+      ><button (click)="vm.download()" aria-label="Download main.rs" title="Download main.rs">
+        ↓
+      </button>
+    </div>
+  </div>
+  <code-editor [code]="vm.code()" (codeChange)="vm.editCode($event)"></code-editor>
+  <div class="runner-controls">
+    <label
+      >Mode<select [(ngModel)]="vm.runMode" [disabled]="vm.busy()">
+        <option value="run">Run</option>
+        <option value="test">Test</option>
+      </select></label
+    ><label
+      >Build<select [(ngModel)]="vm.optimization" [disabled]="vm.busy()">
+        <option value="debug">Debug</option>
+        <option value="release">Release</option>
+      </select></label
+    >
+  </div>
+  <div class="run-bar">
+    <span id="editor-help">Ctrl / ⌘ + Enter to run<br />Esc, then Tab to leave editor</span
+    ><button class="run-button" (click)="vm.run()" [disabled]="vm.busy() || vm.formatting()">
+      <span>{{ vm.busy() ? '◌' : '▷' }}</span>
+      {{ vm.busy() ? 'Running…' : vm.runMode === 'test' ? 'Run tests' : 'Run code' }}
+    </button>
+  </div>
+  <app-runner-output />
+  <div class="playground-footnote">
+    <span class="status-dot"></span
+    ><span>Runs locally without network access. Drafts are saved in this browser.</span>
+  </div>
+</aside>

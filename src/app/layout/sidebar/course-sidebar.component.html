@@ -1,0 +1,80 @@
+<aside class="sidebar" [class.mobile-open]="vm.mobileMenu()" aria-label="Course curriculum">
+  <button
+    class="overview-link"
+    [class.selected]="vm.view() === 'overview'"
+    (click)="vm.navigate('overview')"
+  >
+    <span>▦</span> Course overview <span>↗</span>
+  </button>
+  <div class="mobile-quicklinks">
+    <button (click)="vm.navigate('playground')">Playground ↗</button
+    ><button (click)="vm.navigate('reference')">Field notes ↗</button>
+  </div>
+  <label class="search"
+    ><span aria-hidden="true">⌕</span
+    ><input
+      type="search"
+      placeholder="Find a lesson…"
+      aria-label="Search lessons"
+      [ngModel]="vm.search()"
+      (ngModelChange)="vm.search.set($event)"
+    /><kbd>/</kbd></label
+  >
+  <div class="module-list">
+    @for (module of vm.filteredModules(); track module.id; let i = $index) {
+      <div class="sidebar-module">
+        <button
+          class="module-toggle"
+          (click)="vm.toggleModule(module.id)"
+          [attr.aria-expanded]="vm.openModules().includes(module.id) || !!vm.search()"
+        >
+          <span class="module-number">{{
+            vm.moduleNumber(module.id).toString().padStart(2, '0')
+          }}</span
+          ><span>{{ module.title }}</span
+          ><span
+            class="chevron"
+            [class.expanded]="vm.openModules().includes(module.id) || !!vm.search()"
+            >›</span
+          >
+        </button>
+        @if (vm.openModules().includes(module.id) || vm.search()) {
+          <div class="lesson-links">
+            @for (lesson of module.lessons; track lesson.id) {
+              <button
+                [class.current]="vm.selectedId() === lesson.id && vm.view() === 'lesson'"
+                (click)="vm.openLesson(lesson.id)"
+                [attr.aria-current]="
+                  vm.selectedId() === lesson.id && vm.view() === 'lesson' ? 'page' : null
+                "
+              >
+                <span class="lesson-dot" [class.done]="vm.completed().includes(lesson.id)">{{
+                  vm.completed().includes(lesson.id) ? '✓' : ''
+                }}</span
+                ><span>{{ lesson.title }}</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    } @empty {
+      <p class="empty-search">No lessons found. Try “borrow”, “async”, or “trait”.</p>
+    }
+  </div>
+  <div class="sidebar-progress">
+    <div>
+      <span>Course progress</span><strong>{{ vm.progress() }}%</strong>
+    </div>
+    <div
+      class="progress-track"
+      role="progressbar"
+      [attr.aria-valuenow]="vm.progress()"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-label="Course completion"
+    >
+      <span [style.width.%]="vm.progress()"></span>
+    </div>
+    <small>{{ vm.completed().length }} of {{ vm.lessons.length }} lessons completed</small>
+  </div>
+</aside>

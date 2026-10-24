@@ -1,0 +1,26 @@
+<a class="skip-link" href="#main-content" (click)="vm.skipToContent($event)">Skip to content</a>
+<app-header />
+
+<div class="app-layout" [class.focus-layout]="vm.view() === 'playground'">
+  <app-course-sidebar />
+
+  <main id="main-content" class="main" tabindex="-1">
+    @if (vm.view() === 'overview') {
+      <app-course-overview />
+    }
+
+    @if (vm.view() === 'lesson' || vm.view() === 'playground') {
+      <app-learning-workspace />
+    }
+
+    @if (vm.view() === 'reference') {
+      <app-field-notes />
+    }
+  </main>
+</div>
+@if (vm.notice()) {
+  <div class="toast" role="status">
+    {{ vm.notice()
+    }}<button (click)="vm.notice.set('')" aria-label="Dismiss notification">×</button>
+  </div>
+}

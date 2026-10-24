@@ -1,0 +1,104 @@
+<div class="reference-page">
+  <h1>Field notes</h1>
+  <div class="reference-grid">
+    <section>
+      <h2>Cargo commands</h2>
+      <dl>
+        <dt>cargo new hello</dt>
+        <dd>Create a binary package.</dd>
+        <dt>cargo check</dt>
+        <dd>Type-check without producing an executable.</dd>
+        <dt>cargo run</dt>
+        <dd>Build and run your program.</dd>
+        <dt>cargo test</dt>
+        <dd>Run unit, integration, and documentation tests.</dd>
+        <dt>cargo fmt</dt>
+        <dd>Format your project with rustfmt.</dd>
+        <dt>cargo clippy -- -D warnings</dt>
+        <dd>Check common mistakes and reject warnings.</dd>
+        <dt>cargo doc --open</dt>
+        <dd>Build and browse project documentation.</dd>
+        <dt>cargo build --release</dt>
+        <dd>Build with the release profile.</dd>
+        <dt>rustup update stable</dt>
+        <dd>Update your installed stable toolchain.</dd>
+      </dl>
+    </section>
+    <section>
+      <h2>Ownership and borrowing</h2>
+      <ul class="reference-list">
+        <li>
+          Every value has an owner. When that owner’s scope ends, its value is dropped unless
+          ownership was moved.
+        </li>
+        <li>
+          Moving transfers ownership. Copy types can be duplicated implicitly; Clone is explicit.
+        </li>
+        <li>
+          For ordinary references to the same value, use multiple shared borrows or one exclusive
+          mutable borrow.
+        </li>
+        <li>
+          A reference must never outlive the value it points to. Lifetime annotations express
+          relationships; they do not extend lifetimes.
+        </li>
+        <li>
+          Interior mutability permits mutation through shared references using types that enforce
+          their own rules.
+        </li>
+        <li>
+          Model absence with Option and recoverable failure with Result. Use ? to propagate errors.
+        </li>
+      </ul>
+      <div class="reference-callout">
+        <strong>Version ≠ edition.</strong>
+        <p>
+          This course targets stable Rust 1.99.1, verified 22 October 2026, using edition 2024. The
+          default runner image pins exactly that compiler, so the version shown in the header
+          matches the course. The playground always uses stable Rust and edition 2024.
+        </p>
+      </div>
+    </section>
+    <section>
+      <h2>Documentation</h2>
+      <div class="resource-links">
+        <a href="https://doc.rust-lang.org/book/" target="_blank" rel="noopener noreferrer"
+          ><strong>The Rust Book ↗</strong><span>The complete official introduction.</span></a
+        ><a href="https://doc.rust-lang.org/reference/" target="_blank" rel="noopener noreferrer"
+          ><strong>The Rust Reference ↗</strong
+          ><span>Precise syntax and language semantics.</span></a
+        ><a href="https://doc.rust-lang.org/std/" target="_blank" rel="noopener noreferrer"
+          ><strong>Standard library ↗</strong><span>Types, traits, methods, and examples.</span></a
+        ><a href="https://doc.rust-lang.org/cargo/" target="_blank" rel="noopener noreferrer"
+          ><strong>The Cargo Book ↗</strong
+          ><span>Packages, workspaces, features, and builds.</span></a
+        ><a
+          href="https://doc.rust-lang.org/edition-guide/rust-2024/"
+          target="_blank"
+          rel="noopener noreferrer"
+          ><strong>The Edition Guide ↗</strong><span>Understand the Rust 2024 changes.</span></a
+        ><a href="https://doc.rust-lang.org/nomicon/" target="_blank" rel="noopener noreferrer"
+          ><strong>The Rustonomicon ↗</strong
+          ><span>Advanced unsafe Rust and its obligations.</span></a
+        >
+      </div>
+    </section>
+    <section>
+      <h2>Local projects</h2>
+      <p>
+        The browser runner handles single-file examples and tests. Multi-file packages, procedural
+        macros, custom dependency sets, real networking, embedded targets, Miri, and long-running
+        services belong in a local Cargo project.
+      </p>
+      <pre class="inline-code"><code>cargo new rust-experiments
+cd rust-experiments
+# Copy your downloaded main.rs to src/main.rs
+cargo run
+cargo test</code></pre>
+      <p>
+        Install Rust using
+        <a href="https://rustup.rs/" target="_blank" rel="noopener noreferrer">rustup.rs ↗</a>.
+      </p>
+    </section>
+  </div>
+</div>

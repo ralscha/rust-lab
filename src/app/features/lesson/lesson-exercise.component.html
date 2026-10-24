@@ -1,0 +1,39 @@
+<section class="exercise-intro">
+  <h2>Exercise</h2>
+  <p>{{ vm.selected().exercise.prompt }}</p>
+  <p class="muted">The starter is loaded in the editor. Make your changes, then run it.</p>
+  @if (vm.selected().exercise.expectedOutput !== undefined) {
+    <h3>Target output</h3>
+    <pre class="target-output">{{ vm.selected().exercise.expectedOutput || '(no output)' }}</pre>
+    <p class="fine-print">
+      Checks output text, ignoring trailing whitespace. Review your code for correctness too.
+    </p>
+  }
+</section>
+@if (vm.exerciseChecked() !== null) {
+  <div class="exercise-feedback" [class.pass]="vm.exerciseChecked()">
+    <strong>{{ vm.exerciseChecked() ? '✓ Output matches' : 'Output does not match' }}</strong>
+    <p>
+      {{
+        vm.exerciseChecked()
+          ? 'Review your solution before marking the lesson complete.'
+          : 'Compare the target output and check the Compiler tab.'
+      }}
+    </p>
+  </div>
+}
+<div class="exercise-help">
+  <button (click)="vm.hintOpen.set(!vm.hintOpen())" [attr.aria-expanded]="vm.hintOpen()">
+    {{ vm.hintOpen() ? '− Hide hint' : '+ Show hint' }}
+  </button>
+  @if (vm.hintOpen()) {
+    <p>{{ vm.selected().exercise.hint }}</p>
+  }
+  <button (click)="vm.showSolution()" [attr.aria-expanded]="vm.solutionOpen()">
+    {{ vm.solutionOpen() ? '− Hide solution' : '+ Show solution' }}
+  </button>
+  @if (vm.solutionOpen()) {
+    <pre class="inline-code"><code>{{ vm.selected().exercise.solution }}</code></pre>
+    <button class="secondary" (click)="vm.loadSolution()">Load solution into editor →</button>
+  }
+</div>

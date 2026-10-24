@@ -1,0 +1,300 @@
+/* Shell styles. Keep overrides in responsive.css. */
+.mobile-quicklinks {
+  display: none;
+}
+.topbar {
+  height: 88px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 34px;
+  gap: 30px;
+  background: var(--white);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 0;
+  min-width: 218px;
+  font-family: var(--display);
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -1.1px;
+}
+.brand-mark {
+  width: 43px;
+  height: 43px;
+  background: var(--orange);
+  color: #fff8ef;
+  border-radius: 12px;
+  display: grid;
+  place-content: center;
+  font-size: 30px;
+  position: relative;
+}
+.brand-mark > span {
+  font-size: 22px;
+  position: absolute;
+  right: -6px;
+  bottom: -8px;
+  color: var(--ink);
+  text-shadow:
+    2px 0 var(--white),
+    -2px 0 var(--white),
+    0 -2px var(--white);
+}
+.brand-light {
+  font-weight: 500;
+}
+.topnav {
+  display: flex;
+  gap: 30px;
+  align-self: stretch;
+}
+.topnav button {
+  font-size: var(--text-sm);
+  font-weight: 550;
+  position: relative;
+  padding: 0 2px;
+  color: var(--muted);
+}
+.topnav button.active {
+  color: var(--ink);
+}
+.topnav button.active:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  background: var(--orange);
+  left: 0;
+  right: 0;
+}
+.topnav button span {
+  margin-left: 4px;
+}
+.header-right {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+.version {
+  font-size: var(--text-sm);
+  border: 1px solid var(--line);
+  padding: 7px 10px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+.version i,
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #548563;
+  border-radius: 50%;
+  margin-right: 7px;
+}
+.github-link {
+  font-size: var(--text-sm);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.menu-button {
+  display: none;
+}
+.app-layout {
+  display: flex;
+  min-height: calc(100vh - 88px);
+}
+.sidebar {
+  width: 300px;
+  min-width: 300px;
+  position: sticky;
+  top: 88px;
+  height: calc(100vh - 88px);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 19px 0;
+  background: #f1f2eb;
+  border-right: 1px solid var(--line);
+}
+.overview-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--text-sm);
+  padding: 12px 11px;
+  width: 100%;
+  text-align: left;
+  border-radius: 5px;
+  font-weight: 550;
+}
+.overview-link > span:first-child {
+  font-size: 17px;
+}
+.overview-link > span:last-child {
+  margin-left: auto;
+}
+.overview-link.selected {
+  background: #e2e7d8;
+  color: #2f5039;
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #dce0d3;
+  border-radius: 5px;
+  margin: 17px 2px 21px;
+  padding: 7px 9px;
+  background: #f9f9f5;
+  color: #8d9486;
+}
+.search > span {
+  font-size: 21px;
+  line-height: 16px;
+}
+.search input {
+  width: 100%;
+  border: 0;
+  background: none;
+  min-width: 0;
+  font-size: var(--text-sm);
+  outline: none;
+}
+.search kbd {
+  border: 1px solid var(--line);
+  padding: 0 4px;
+  font-size: var(--text-xs);
+}
+.module-list {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #d3d9c9 transparent;
+  flex: 1;
+  margin-right: -7px;
+  padding-right: 7px;
+}
+.sidebar-module {
+  margin-bottom: 9px;
+}
+.module-toggle {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: 9px 8px;
+  line-height: 1.5;
+}
+.module-number {
+  font:
+    0.875rem Consolas,
+    monospace;
+  color: #9a9f8f;
+}
+.module-toggle > span:nth-child(2) {
+  flex: 1;
+}
+.chevron {
+  font-size: 19px;
+  font-weight: 400;
+  color: #909981;
+}
+.chevron.expanded {
+  transform: rotate(90deg);
+}
+.lesson-links {
+  margin: 1px 0 14px 20px;
+  border-left: 1px solid #d6dccb;
+  padding: 0 0 0 12px;
+}
+.lesson-links button {
+  font-size: var(--text-sm);
+  width: 100%;
+  padding: 9px 7px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  text-align: left;
+  color: #6d7669;
+  line-height: 1.5;
+  border-radius: 4px;
+}
+.lesson-links button:hover,
+.module-toggle:hover {
+  background: #e8ecdf;
+}
+.lesson-links button.current {
+  background: #e3e8d8;
+  color: #29422e;
+  font-weight: 600;
+}
+.lesson-dot {
+  width: 5px;
+  height: 5px;
+  border: 1px solid #a3ad94;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.lesson-dot.done {
+  width: 12px;
+  height: 12px;
+  background: var(--green);
+  border: 0;
+  color: white;
+  font-size: 9px;
+  text-align: center;
+  line-height: 12px;
+}
+.current .lesson-dot {
+  background: var(--orange);
+  border-color: var(--orange);
+}
+.sidebar-progress {
+  padding: 18px 10px;
+  margin-top: 12px;
+  border-top: 1px solid #dce0d3;
+}
+.sidebar-progress > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+}
+.sidebar-progress strong {
+  font-size: var(--text-sm);
+}
+.progress-track {
+  height: 4px;
+  background: #dfe5d5;
+  margin: 12px 0 7px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.progress-track > span {
+  display: block;
+  background: var(--green);
+  height: 100%;
+  transition: width 0.3s;
+}
+.sidebar-progress small {
+  font-size: var(--text-xs);
+  color: #808a75;
+}
+.empty-search {
+  font-size: var(--text-sm);
+  padding: 15px;
+  color: var(--muted);
+}
+.main {
+  flex: 1;
+  min-width: 0;
+}

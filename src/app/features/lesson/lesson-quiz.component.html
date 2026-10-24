@@ -1,0 +1,23 @@
+<section class="quiz">
+  <h3>{{ vm.selected().quiz.question }}</h3>
+  <div class="quiz-options">
+    @for (option of vm.selected().quiz.options; track $index; let i = $index) {
+      <button
+        (click)="vm.quizAnswer.set(i)"
+        [class.chosen]="vm.quizAnswer() === i"
+        [class.correct]="vm.quizAnswer() === i && i === vm.selected().quiz.answer"
+      >
+        <span>{{ ['A', 'B', 'C', 'D'][i] }}</span
+        >{{ option }}
+      </button>
+    }
+  </div>
+  @if (vm.quizAnswer() !== null) {
+    <p class="quiz-feedback" [class.correct]="vm.quizAnswer() === vm.selected().quiz.answer">
+      <strong>{{
+        vm.quizAnswer() === vm.selected().quiz.answer ? 'That’s right.' : 'Not quite — try again.'
+      }}</strong>
+      {{ vm.selected().quiz.explanation }}
+    </p>
+  }
+</section>

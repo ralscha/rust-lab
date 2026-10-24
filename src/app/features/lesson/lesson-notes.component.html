@@ -1,0 +1,12 @@
+<section class="notes-panel">
+  <h2>Notes</h2>
+  <label for="lesson-note">Your notes for {{ vm.selected().title }}</label
+  ><textarea
+    id="lesson-note"
+    [(ngModel)]="vm.note"
+    (ngModelChange)="vm.saveNote()"
+    placeholder="Write a note…"
+    rows="15"
+  ></textarea
+  ><small>Saved in this browser as you type.</small>
+</section>

@@ -1,0 +1,94 @@
+/* Exercises styles. Keep overrides in responsive.css. */
+.exercise-intro h2,
+.notes-panel h2 {
+  font-size: 1.625rem;
+  margin: 0 0 15px;
+}
+.exercise-intro p.muted {
+  font-size: var(--text-sm);
+  color: #929b86;
+}
+.target-output {
+  overflow-wrap: anywhere;
+  background: #eaf0e0;
+  border: 1px solid #dae5cb;
+  padding: 16px;
+  border-radius: 4px;
+  font-size: var(--text-sm);
+  line-height: 1.8;
+  color: #5d7b46;
+  white-space: pre-wrap;
+}
+.exercise-intro p.fine-print {
+  font-size: var(--text-xs);
+  color: #8d997f;
+}
+.exercise-feedback {
+  background: #f5ebdf;
+  border: 1px solid #e8d6c2;
+  padding: 16px;
+  font-size: var(--text-sm);
+  color: #9c7148;
+  margin: 20px 0;
+  border-radius: 5px;
+}
+.exercise-feedback.pass {
+  background: #eaf2df;
+  color: #647f4c;
+  border-color: #d4e2c2;
+}
+.exercise-feedback p {
+  font-size: var(--text-sm);
+  margin: 6px 0 0;
+}
+.exercise-help {
+  margin-top: 25px;
+}
+.exercise-help > button {
+  display: block;
+  text-align: left;
+  width: 100%;
+  font-size: var(--text-sm);
+  padding: 15px 0;
+  border-bottom: 1px solid #e0e7d7;
+}
+.exercise-help > button.secondary {
+  padding: 10px 13px;
+  width: auto;
+}
+.exercise-help > p {
+  font-size: var(--text-sm);
+  color: #7d8d6e;
+  background: #eef3e6;
+  padding: 16px;
+  line-height: 1.8;
+}
+.notes-panel label {
+  font-size: var(--text-xs);
+  display: block;
+  color: #7c8d6b;
+  margin-bottom: 10px;
+}
+.notes-panel textarea {
+  resize: vertical;
+  display: block;
+  width: 100%;
+  background: var(--white);
+  border: 1px solid #d9e2cf;
+  border-radius: 5px;
+  padding: 15px;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  line-height: 1.9;
+}
+.notes-panel small {
+  display: block;
+  font-size: var(--text-xs);
+  color: #97a586;
+  margin-top: 10px;
+}
+
+.exercise-intro h3 {
+  font-size: var(--text-base);
+  letter-spacing: -0.2px;
+}

@@ -1,0 +1,43 @@
+﻿<div class="overview-page">
+  <header class="overview-heading">
+    <div>
+      <h1>Course overview</h1>
+      <p>{{ vm.modules.length }} chapters · {{ vm.lessons.length }} lessons · Edition 2024</p>
+    </div>
+    <div class="overview-actions">
+      <button class="primary" (click)="vm.resume()">
+        {{ vm.completed().length ? 'Continue learning' : 'Start course' }} <span>→</span>
+      </button>
+      <button class="text-button" (click)="vm.navigate('playground')">Open playground ↗</button>
+    </div>
+  </header>
+  <section class="chapter-grid" aria-label="Course chapters">
+    @for (module of vm.modules; track module.id; let i = $index) {
+      <button class="chapter-card" (click)="vm.openLesson(module.lessons[0].id)">
+        <h2>
+          <span class="chapter-number">{{ (i + 1).toString().padStart(2, '0') }}</span>
+          {{ module.title }}
+        </h2>
+        <p>{{ module.description }}</p>
+        <div class="card-bottom">
+          <span
+            >{{ module.lessons.length }} lessons · {{ vm.moduleCompleted(module) }}/{{
+              module.lessons.length
+            }}
+            complete</span
+          >
+          <span class="card-arrow" aria-hidden="true">↗</span>
+        </div>
+      </button>
+    }
+  </section>
+  <footer class="page-footer">
+    <span>Rust 1.99.1 · verified 22 Oct 2026</span>
+    <a
+      href="https://github.com/rust-lang/rust/releases/tag/1.99.1"
+      target="_blank"
+      rel="noopener noreferrer"
+      >Release notes ↗</a
+    >
+  </footer>
+</div>
