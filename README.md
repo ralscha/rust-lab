@@ -2,7 +2,11 @@
 
 An interactive Rust language course built with **Angular**, **TypeScript**, **CodeMirror 6**, and a **Rust backend using Axum and Tokio**. It contains 49 lessons in 11 chapters, from installation and ownership to concurrency, unsafe Rust, and practical capstones.
 
-The course targets **Rust 1.99.1**, the latest stable release verified on **22 October 2026**, and **edition 2024**. The header reads the compiler version from the local Docker runner. Compiler versions and language editions are distinct. The default image pins the compiler to the course version.
+The course targets **Rust 1.99.1**, the latest stable release verified on **22 October 2026**, and **edition 2024**. 
+
+## Online
+
+Access the course online at [https://rust-lab.rasc.ch](https://rust-lab.rasc.ch)
 
 ## Run locally
 
@@ -73,7 +77,7 @@ The runner supports single-file Rust programs and test harnesses using the stand
 
 Docker reduces the impact of mistakes in local experiments, but containers share a kernel and are not a complete security boundary for hostile public workloads. The backend controls Docker and should stay bound to loopback. Do not expose its Docker socket to submitted code. See [server/README.md](server/README.md) for the API contract, configuration, and exact limits.
 
-## Build and formatting
+## Build and deployment
 
 For installation and updates on a Linux server with Caddy and systemd, see [deployment/README.md](deployment/README.md). The deployment script clones, builds, and installs the application at `rust-lab.rasc.ch`.
 
@@ -83,46 +87,6 @@ cargo check --locked      # Rust compilation checks without producing a binary
 npm run format:check      # Prettier and rustfmt checks
 ```
 
-The repository has no automated test suites or test runners. Rust testing lessons and the Playground's Test mode are course features.
-
-## Project map
-
-```text
-src/app/app.component.*        Page shell and browser event forwarding
-src/app/layout/                Header and searchable curriculum sidebar
-src/app/features/overview/     Course overview
-src/app/features/workspace/    Lesson/playground page layout
-src/app/features/lesson/       Reader, quiz, exercise, and notes components
-src/app/features/playground/   Editor controls and runner output components
-src/app/features/reference/    Field notes and documentation links
-src/app/state/                 Course and editor state
-src/app/services/              Browser persistence and local runner API transport
-src/app/content/index.ts       Ordered course entry point
-src/app/content/<chapter>/     Chapter index and one TypeScript file per lesson
-src/app/course.model.ts        Typed course/lesson schema
-src/app/editor.component.ts    CodeMirror Rust integration
-src/styles.css                Stylesheet import order
-src/styles/                   Base, shell, feature, and responsive styles
-Cargo.toml                    Rust workspace
-Cargo.lock                    Locked backend dependencies
-server/Cargo.toml             Backend crate and dependencies
-server/src/main.rs            Server startup and shutdown
-server/src/app.rs             API routes and response mapping
-server/src/config.rs          Environment configuration and body/source limits
-server/src/error.rs           JSON errors and responses
-server/src/security.rs        Browser origins and per-client rate limits
-server/src/static_files.rs    Angular assets and client-side route fallback
-server/src/validation.rs      JSON, source, and compiler option validation
-server/src/runner.rs          Docker job lifecycle, limits, and compiler metadata
-runner/                       Local compiler image and container entrypoint
-scripts/dev.mjs               Angular and Rust development launcher
-```
-
-The lesson content is stored in TypeScript, independent of the presentation. Add a lesson file inside its chapter directory, follow `Lesson` in `course.model.ts`, and import it into that chapter's `index.ts`. Include complete executable examples and a meaningful exercise. Keep IDs stable to preserve saved progress. The small `foundations.ts` and `advanced.ts` files assemble the chapters in order; `content/index.ts` exposes the full course.
-
-View components share the root `LearningStore`, which coordinates navigation, progress, and lesson context. `EditorState` handles execution and cancellation; the storage and API services own persistence and HTTP requests. The root component forwards browser events without owning those responsibilities. Shared styles remain global to preserve the existing layout; edit the matching file under `src/styles/` and put viewport overrides in `responsive.css`.
-
-Run `npm run format` to format the frontend and documentation with Prettier and the backend with rustfmt, or `npm run format:check` to check formatting without changing files.
 
 ## Primary references
 
@@ -133,4 +97,3 @@ Run `npm run format` to format the frontend and documentation with Prettier and 
 - [Rust 2024 Edition Guide](https://doc.rust-lang.org/edition-guide/rust-2024/)
 - [Angular version compatibility](https://angular.dev/reference/versions)
 
-The explanatory prose is original. References are included for precise semantics and continued study. Interface fonts use Google Fonts when available, with local fallbacks.
