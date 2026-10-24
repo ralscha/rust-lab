@@ -48,7 +48,7 @@ It will:
 6. Install `/etc/caddy/sites/rust-lab.caddy`. Add an import to `/etc/caddy/Caddyfile` if the site is not already included, then validate the full Caddy configuration.
 7. Switch `/opt/rust-lab/current`, start the backend, check its health/compiler metadata, and compile and run a small Rust program.
 8. Reload Caddy, or enable and start it on the first installation.
-9. Install the update command at `/usr/local/sbin/deploy-rust-lab`.
+9. Install the update command at `/opt/rust-lab/deploy-rust-lab`.
 
 Existing Caddy sites stay in the main configuration. An existing glob import that includes the installed site is reused. If `rust-lab.rasc.ch` is already defined in a different file, move that site to `/etc/caddy/sites/rust-lab.caddy` before the first deployment. This file is managed by the deployment script.
 
@@ -57,14 +57,14 @@ Existing Caddy sites stay in the main configuration. An existing glob import tha
 Push the changes to `main`, then run as root:
 
 ```sh
-deploy-rust-lab
+/opt/rust-lab/deploy-rust-lab
 ```
 
 To use another branch or clone URL:
 
 ```sh
-BRANCH=staging deploy-rust-lab
-REPO_URL=https://github.com/ralscha/rust-lab.git deploy-rust-lab
+BRANCH=staging /opt/rust-lab/deploy-rust-lab
+REPO_URL=https://github.com/ralscha/rust-lab.git /opt/rust-lab/deploy-rust-lab
 ```
 
 The current service keeps running while the new version builds. Activation requires a short restart. Concurrent deployments are prevented with a lock. If activation or verification fails, the previous release and configuration files are restored and the previously running service is restarted. Build failures leave the current release active.
@@ -81,10 +81,10 @@ The deployment script refreshes the installed update command after a successful 
   runner.env                                release-specific Docker image
   REVISION                                  full Git commit
 /opt/rust-lab/cache/cargo/                    reusable build cache
+/opt/rust-lab/deploy-rust-lab                 install/update command
 /var/lib/rust-lab/                           systemd-managed runtime state
 /etc/systemd/system/rust-lab.service
 /etc/caddy/sites/rust-lab.caddy
-/usr/local/sbin/deploy-rust-lab
 ```
 
 Each release includes its own Docker image setting so a rollback uses the matching runner. Previous release directories and Docker image tags are retained. Remove old versions you no longer need after checking `readlink -f /opt/rust-lab/current`; keep the matching image for any release you may restore. Temporary clone directories are removed automatically.

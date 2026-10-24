@@ -235,9 +235,8 @@ else
   caddy_start_attempted=true
   systemctl enable --now caddy.service
 fi
-install -d -m 0755 /usr/local/sbin
-install -m 0755 "$source_dir/deployment/build-and-deploy.sh" /usr/local/sbin/deploy-rust-lab.next
-mv -Tf /usr/local/sbin/deploy-rust-lab.next /usr/local/sbin/deploy-rust-lab
+install -m 0755 "$source_dir/deployment/build-and-deploy.sh" "$APP_ROOT/deploy-rust-lab.next"
+mv -Tf "$APP_ROOT/deploy-rust-lab.next" "$APP_ROOT/deploy-rust-lab"
 activation_started=false
 log "Deployed $revision to https://$SITE"
 log "Current release: $release_dir"
