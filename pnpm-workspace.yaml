@@ -3,3 +3,7 @@ allowBuilds:
   esbuild: true
   lmdb: true
   msgpackr-extract: true
+
+# Patched transitive dependencies until the parent packages update their pins.
+overrides:
+  'vite': '8.3.5'
