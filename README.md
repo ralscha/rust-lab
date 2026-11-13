@@ -2,7 +2,7 @@
 
 An interactive Rust language course built with **Angular**, **TypeScript**, **CodeMirror 6**, and a **Rust backend using Axum and Tokio**. It contains 49 lessons in 11 chapters, from installation and ownership to concurrency, unsafe Rust, and practical capstones.
 
-The course targets **Rust 1.99.1**, the latest stable release verified on **22 October 2026**, and **edition 2024**. 
+The course targets **Rust 1.100.0**, the latest stable release verified on **13 November 2026**, and **edition 2024**.
 
 ## Online
 
@@ -24,7 +24,7 @@ Open **http://127.0.0.1:4200**. This starts the Angular development server and c
 
 With pnpm, use `pnpm install --frozen-lockfile`, `pnpm runner:build`, then `pnpm start`. To run the processes separately, use `npm run dev:server` and `npm run dev:client` in two terminals.
 
-The runner image is a one-time build and includes stable Rust 1.99.1 and rustfmt. Execution and formatting always use edition 2024 and work offline once the image is built.
+The runner image is a one-time build and includes stable Rust 1.100.0 and rustfmt. Execution and formatting always use edition 2024 and work offline once the image is built. Rebuild the image with `npm run runner:build` after updating the course, and restart the backend to refresh its compiler metadata.
 
 To serve a production build locally:
 
@@ -63,6 +63,8 @@ Open **http://127.0.0.1:3001**. The Rust backend serves the Angular files and AP
 
 Every lesson has explanatory sections, a runnable example with its expected output, an exercise starter and solution, a quiz with feedback, and official documentation links. The course is broad language coverage; the full ecosystem and every standard-library API are ongoing study rather than a finite checklist.
 
+Rust 1.100 coverage includes the stabilized never type, allocator and `DropGuard` APIs, unsafe zero-sized type construction, and Cargo's dependency diagnostics and opt-in dependency cooldowns.
+
 ## How execution works
 
 ```text
@@ -87,13 +89,11 @@ cargo check --locked      # Rust compilation checks without producing a binary
 npm run format:check      # Prettier and rustfmt checks
 ```
 
-
 ## Primary references
 
-- [Rust 1.99.1 release](https://github.com/rust-lang/rust/releases/tag/1.99.1)
+- [Rust 1.100.0 release](https://blog.rust-lang.org/2026/11/12/Rust-1.100.0/)
 - [The Rust Programming Language](https://doc.rust-lang.org/book/)
 - [The Rust Reference](https://doc.rust-lang.org/reference/)
 - [Standard library documentation](https://doc.rust-lang.org/std/)
 - [Rust 2024 Edition Guide](https://doc.rust-lang.org/edition-guide/rust-2024/)
 - [Angular version compatibility](https://angular.dev/reference/versions)
-

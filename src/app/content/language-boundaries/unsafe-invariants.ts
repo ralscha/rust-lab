@@ -17,7 +17,9 @@ export const unsafeInvariantsLesson: Lesson = {
       'Unsafe creates obligations',
       `Unsafe Rust permits a small set of operations whose safety cannot be established by the compiler alone, including dereferencing raw pointers and calling unsafe functions. The surrounding code remains subject to ordinary type checking and ownership rules. An unsafe block does not mean the compiler verifies the operation or that arbitrary undefined behavior becomes acceptable. It means the programmer is asserting the required conditions hold at that point.
 
-Raw pointers can be created from valid references in safe code. They do not carry the same enforced lifetime and borrowing guarantees when later used. Before dereferencing, establish that the pointer is non-null, suitably aligned, points to a live allocation with a valid initialized value of the expected type, and is used consistently with aliasing rules. A non-null address alone proves very little. Pointer arithmetic must also respect the operation's documented allocation boundaries.`,
+Raw pointers can be created from valid references in safe code. They do not carry the same enforced lifetime and borrowing guarantees when later used. Before dereferencing, establish that the pointer is non-null, suitably aligned, points to a live allocation with a valid initialized value of the expected type, and is used consistently with aliasing rules. A non-null address alone proves very little. Pointer arithmetic must also respect the operation's documented allocation boundaries.
+
+Rust 1.100 adds the unsafe std::mem::conjure_zst for creating an inhabited zero-sized type without a safe constructor. It panics if the type is not zero-sized; the caller must also ensure the type is inhabited and that using the value respects its safety invariants. A zero-sized token can encode permission to access a resource, so having no bytes does not make fabricating it automatically safe. Prefer safe constructors where available.`,
     ),
     section(
       'A safe wrapper must be safe for every safe caller',
@@ -92,6 +94,10 @@ fn main() {
     reference(
       'Edition Guide: unsafe operations in unsafe functions',
       'https://doc.rust-lang.org/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html',
+    ),
+    reference(
+      'Standard library: conjure_zst',
+      'https://doc.rust-lang.org/std/mem/fn.conjure_zst.html',
     ),
   ],
   tags: ['unsafe', 'raw pointers', 'invariants', 'edition 2024'],

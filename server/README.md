@@ -11,7 +11,7 @@ npm run runner:build
 cargo run --locked -p rust-lab-server
 ```
 
-The one-time image build downloads the [official Rust image](https://hub.docker.com/_/rust) and installs rustfmt. Subsequent execution, formatting, and metadata lookup require no internet connection. The default image pins Rust 1.99.1. Building the Angular frontend still requires Node.js and its dependencies.
+The one-time image build downloads the [official Rust image](https://hub.docker.com/_/rust) and installs rustfmt. Subsequent execution, formatting, and metadata lookup require no internet connection. The default image pins Rust 1.100.0. Building the Angular frontend still requires Node.js and its dependencies.
 
 `npm start` starts both Angular on port 4200 and the backend on port 3001. For production, `npm run build` builds the frontend and Rust release binary; `npm run serve` serves both on port 3001. The runner image is built separately. A deployed backend needs the Docker CLI, access to a **local Linux Docker daemon**, and the stable runner image. Select the local Docker context before starting it; the CLI honors Docker's normal context/environment settings.
 

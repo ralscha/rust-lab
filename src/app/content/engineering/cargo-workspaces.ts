@@ -26,15 +26,22 @@ A workspace groups related packages under one manifest and coordinates a shared 
 Test the supported combinations of default features, minimal features, and important optional capabilities. Avoid treating --all-features as proof that every valid configuration works. Build scripts execute during builds and can generate code or locate native libraries. Procedural macros also execute at compile time. Evaluate dependencies as executable parts of your build process, and keep application behavior independent of accidental local machine settings.`,
     ),
     section(
-      'Stable 1.99.1 and edition 2024',
-      `This course targets the latest verified stable compiler, Rust 1.99.1, with edition 2024. A compiler release adds implementations and library APIs; an edition opts a crate into a coordinated set of language rules. Dependencies using older editions can coexist with your edition-2024 crate. The rust-version manifest field declares the compiler version your package intends to support, which may be lower than the compiler currently installed.
+      'Stable 1.100.0 and edition 2024',
+      `This course targets the latest verified stable compiler, Rust 1.100.0, with edition 2024. A compiler release adds implementations and library APIs; an edition opts a crate into a coordinated set of language rules. Dependencies using older editions can coexist with your edition-2024 crate. The rust-version manifest field declares the compiler version your package intends to support, which may be lower than the compiler currently installed.
 
 For an existing crate, start from passing checks, run cargo fix --edition, review the changes, then update the edition and rerun tests. Rust 2024 includes changes involving match ergonomics, temporary scopes, return-position impl Trait lifetime capture, the reserved gen keyword, and explicit unsafe boundaries. Automatic migration cannot establish that an unsafe contract is correct. Read the edition guide for code patterns your project uses, and verify your claimed minimum supported compiler in CI. The example below demonstrates conditional compilation without requiring files beyond main.rs.`,
     ),
     section(
+      'Cargo diagnostics and dependency cooldowns',
+      `Cargo 1.100 warns by default about unused dependencies when it has built every target that could use them; unused dev-dependencies are not reported. Configure Cargo lint levels in the [lints.cargo] table of Cargo.toml. Cargo also changed its internal build directory layout, so use final executables in target/debug or target/release instead of relying on internal artifact paths.
+
+Cargo can also delay selecting newly published dependency versions. To opt in for a local project, place the configuration below in .cargo/config.toml. The minimum age applies during resolution; already locked versions remain until a later update re-resolves them. Versions without publication timestamps are not held back, and cargo install ignores this setting. A cooldown is not a substitute for reviewing dependency updates.`,
+      `[registry]\nglobal-min-publish-age = "3 days"`,
+    ),
+    section(
       'A workspace manifest to use locally',
       `The browser executes one source file. Create these manifests in a local multi-package project when practicing workspace design. In a member package, use edition = "2024" under [package], and add dependencies under [dependencies]. The explicit resolver makes workspace dependency behavior clear even when the root manifest is virtual.`,
-      `[workspace]\nmembers = ["core", "cli"]\nresolver = "3"\n\n[workspace.package]\nedition = "2024"\nrust-version = "1.99"`,
+      `[workspace]\nmembers = ["core", "cli"]\nresolver = "3"\n\n[workspace.package]\nedition = "2024"\nrust-version = "1.100"`,
     ),
   ],
   example: rust`#[cfg(debug_assertions)]
@@ -76,6 +83,11 @@ fn main() { println!("supported: {}", supported()); }`,
   references: [
     reference('Cargo: features', 'https://doc.rust-lang.org/cargo/reference/features.html'),
     reference('Cargo: workspaces', 'https://doc.rust-lang.org/cargo/reference/workspaces.html'),
+    reference('Cargo: lints', 'https://doc.rust-lang.org/cargo/reference/lints.html'),
+    reference(
+      'Cargo: minimum publish age',
+      'https://doc.rust-lang.org/cargo/reference/config.html#registryglobal-min-publish-age',
+    ),
     reference(
       'Edition Guide: Rust 2024',
       'https://doc.rust-lang.org/edition-guide/rust-2024/index.html',

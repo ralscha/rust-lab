@@ -11,6 +11,7 @@ export const advancedTypesLesson: Lesson = {
     'Prevent unit confusion with newtypes',
     'Encode state transitions using consuming methods',
     'Distinguish coercions, casts, and checked conversions',
+    'Use the never type for infallible results',
   ],
   sections: [
     section(
@@ -27,12 +28,18 @@ The default Sized bound on generic type parameters means their size is known at 
     ),
     section(
       'Uninhabited results and practical limits',
-      `The never type ! describes computations that do not return normally, such as a diverging function. A panic, return expression, or endless loop can fit into expression contexts because control never produces a value there. Use the stable function-return form when declaring a diverging function; broader uses of never-type syntax may have separate stability constraints. Infallible is a standard uninhabited error type for operations that cannot fail.
+      `The never type ! is uninhabited: no value has that type. A panic, return, break, or diverging function call produces !, which can coerce to another type when control does not continue. Since Rust 1.100, ! can be written in type positions such as Result<T, !>. The standard-library Infallible type is now an alias of !, so a Result using Infallible can be passed to a function expecting !.
+
+Rust 1.100 also changes the fallback for unconstrained never types from () to ! in editions before 2024. This can affect some generic code when upgrading an older crate; consult the release notes if a dependency fails to compile.
 
 Rust's type system is expressive, but complexity has a cost for diagnostics and maintainers. Typestate works well for a small number of meaningful transitions; a runtime enum may be clearer for a large state machine or values loaded from storage. Variance describes how subtype relationships propagate through types, and it becomes especially important for references and unsafe pointer wrappers. Do not manually assert Send or Sync merely to silence a bound error. Treat advanced type techniques as ways to make a specific invariant visible, then keep the public API understandable to ordinary callers.`,
     ),
   ],
-  example: rust`use std::marker::PhantomData;
+  example: rust`use std::{convert::Infallible, marker::PhantomData};
+fn unwrap_infallible<T>(result: Result<T, !>) -> T {
+    let Ok(value) = result;
+    value
+}
 struct Closed;
 struct Open;
 struct Door<State> { name: String, state: PhantomData<State> }
@@ -49,8 +56,10 @@ fn main() {
     println!("{} is open", door.name);
     let door = door.close();
     println!("{} is closed", door.name);
+    let result: Result<u32, Infallible> = Ok(42);
+    println!("infallible: {}", unwrap_infallible(result));
 }`,
-  expectedOutput: 'workshop is open\nworkshop is closed\n',
+  expectedOutput: 'workshop is open\nworkshop is closed\ninfallible: 42\n',
   exercise: {
     prompt:
       'Define distinct Metres and Seconds newtypes and implement speed(Metres, Seconds) -> Option<u32>, returning None for zero seconds.',
@@ -93,6 +102,7 @@ fn main() { println!("{:?}", speed(Metres(100), Seconds(20))); println!("{:?}", 
       'Reference: type coercions',
       'https://doc.rust-lang.org/reference/type-coercions.html',
     ),
+    reference('Standard library: never type', 'https://doc.rust-lang.org/std/primitive.never.html'),
   ],
   tags: ['newtype', 'typestate', 'PhantomData', 'never', 'coercions'],
 };

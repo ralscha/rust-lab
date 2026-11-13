@@ -100,7 +100,7 @@ impl Runner {
         let value = json!({
             "version": version, "hash": hash, "date": date,
             "channel": "stable", "edition": "2024", "provider": "Local Docker", "execution": "local",
-            "referenceVersion": "1.99.1", "verifiedAt": "2026-10-22",
+            "referenceVersion": "1.100.0", "verifiedAt": "2026-11-13",
         });
         *cache = Some((Instant::now() + Duration::from_secs(300), value.clone()));
         Ok(value)

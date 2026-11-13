@@ -11,6 +11,7 @@ export const boxDerefDropLesson: Lesson = {
     'Explain why recursive data needs indirection',
     'Distinguish moving a Box from moving its allocation',
     'Describe Deref coercion and Drop behavior',
+    'Use a drop guard for scope-based rollback',
   ],
   sections: [
     section(
@@ -18,6 +19,19 @@ export const boxDerefDropLesson: Lesson = {
       `Box<T> owns a value in a heap allocation and releases that allocation when the box is dropped. Moving the box transfers ownership of the allocation; it does not clone the stored value. The handle has a known size, so it can appear inside recursive data structures. Without indirection, a linked node containing another full node would require an infinitely expanding layout. Option<Box<Node>> instead stores a finite-sized pointer: the absent case reuses a bit pattern that no valid pointer can hold, so the option needs no extra space.
 
 Heap allocation is not automatically preferable to stack storage. A Vec already manages a heap buffer, so wrapping every vector in Box usually adds an unnecessary layer. A box is useful for recursive ownership, large values whose placement matters, and owned trait objects. It may also hold an unsized value such as a slice or dyn Trait, with the pointer carrying the necessary metadata. Choose Box because of the ownership or layout requirement, rather than to work around a borrow you have not yet understood.`,
+    ),
+    section(
+      'Explicit allocators for Box and Vec',
+      `Rust 1.100 stabilizes the core Allocator API and enables Box and Vec to use an explicit allocator. Box::new_in and Vec::new_in accept an allocator such as std::alloc::System; ordinary Box::new and Vec::new use the global allocator. This selects an allocation strategy without changing the ownership or cleanup rules.
+
+Not every collection or allocator-related method is stable yet. Implementing Allocator is unsafe and requires upholding its allocation and deallocation contracts, so prefer an existing allocator unless you have a well-understood need.`,
+      rust`use std::alloc::System;
+fn main() {
+    let mut values = Vec::new_in(System);
+    values.extend([1, 2, 3]);
+    let boxed = Box::new_in(42, System);
+    println!("values: {values:?}; boxed: {boxed}");
+}`,
     ),
     section(
       'Dereferencing and convenient borrowing',
@@ -30,6 +44,33 @@ Implement Deref when your wrapper behaves transparently like a pointer to its ta
       `Drop runs cleanup when an owned value is destroyed. Files, locks, and memory allocations use this model so normal control-flow exits release resources without a separate cleanup call at each return. A value can also be consumed by std::mem::drop to end its lifetime at a chosen point. You cannot invoke the destructor method directly; that would risk later running it again for the same value.
 
 Local bindings are normally dropped in reverse order of declaration, while field destruction follows defined rules for the containing type. Do not build a fragile protocol around incidental local ordering. A custom destructor should release the resource it owns and avoid panicking. Memory can be intentionally leaked with facilities such as mem::forget, so unsafe code must not rely on every destructor necessarily running. The example makes cleanup visible through output; production cleanup usually performs the resource operation silently.`,
+    ),
+    section(
+      'A guard for rollback',
+      `Rust 1.100 adds std::mem::DropGuard, which wraps a value and runs a closure with it when the guard is dropped. The guard dereferences to the wrapped value. DropGuard::dismiss consumes the guard and returns the value without running the closure.
+
+The following complete program rolls back partial changes when ? returns an error, and dismisses the guard after success. As with other destructors, cleanup can run during unwinding but is not guaranteed after a process abort or if the guard is leaked.`,
+      rust`use std::{mem::DropGuard, num::ParseIntError};
+
+fn append_parsed(values: &mut Vec<u32>, inputs: &[&str]) -> Result<(), ParseIntError> {
+    let original_len = values.len();
+    let mut values = DropGuard::new(values, move |values| values.truncate(original_len));
+    for input in inputs {
+        values.push(input.parse()?);
+    }
+    DropGuard::dismiss(values);
+    Ok(())
+}
+
+fn main() {
+    let mut values = vec![1];
+    assert!(append_parsed(&mut values, &["2", "bad"]).is_err());
+    assert_eq!(values, [1]);
+    println!("after failure: {values:?}");
+    append_parsed(&mut values, &["2", "3"]).expect("valid numbers");
+    assert_eq!(values, [1, 2, 3]);
+    println!("after success: {values:?}");
+}`,
     ),
   ],
   example: rust`struct Node { value: i32, next: Option<Box<Node>> }
@@ -76,6 +117,14 @@ fn main() { let chain = Chain::Link(3, Box::new(Chain::Link(5, Box::new(Chain::L
     reference('The Book: Box', 'https://doc.rust-lang.org/book/ch15-01-box.html'),
     reference('The Book: Drop', 'https://doc.rust-lang.org/book/ch15-03-drop.html'),
     reference('Standard library: Deref', 'https://doc.rust-lang.org/std/ops/trait.Deref.html'),
+    reference(
+      'Standard library: Allocator',
+      'https://doc.rust-lang.org/std/alloc/trait.Allocator.html',
+    ),
+    reference(
+      'Standard library: DropGuard',
+      'https://doc.rust-lang.org/std/mem/struct.DropGuard.html',
+    ),
   ],
-  tags: ['Box', 'Deref', 'Drop', 'RAII'],
+  tags: ['Box', 'Deref', 'Drop', 'DropGuard', 'allocator', 'RAII'],
 };
