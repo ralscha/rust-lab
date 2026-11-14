@@ -2,11 +2,11 @@
 
 Deploys `git@github.com:ralscha/rust-lab.git`, branch `main`, to **https://rust-lab.rasc.ch**. The install/update script follows the same clone-and-build workflow as kcal-counter.
 
-| File                  | Purpose                                                 |
-| --------------------- | ------------------------------------------------------- |
-| `build-and-deploy.sh` | Clones, builds, installs, checks, and starts a release. |
-| `rust-lab.service`    | Runs the Rust backend as the `rust-lab` system user.    |
-| `Caddyfile`           | HTTPS site and reverse proxy to `127.0.0.1:3001`.       |
+| File                  | Purpose                                                        |
+| --------------------- | -------------------------------------------------------------- |
+| `build-and-deploy.sh` | Clones, builds, installs, checks, and starts a release.        |
+| `rust-lab.service`    | Runs the Rust backend as the `rust-lab` system user.           |
+| `Caddyfile`           | HTTPS site, Basic Auth, and reverse proxy to `127.0.0.1:3001`. |
 
 The Rust backend serves both the Angular frontend and `/api`. Caddy is the public entry point. The runner always uses stable Rust and edition 2024.
 
@@ -28,7 +28,20 @@ Point the `rust-lab.rasc.ch` A/AAAA records to this server and allow inbound TCP
 systemctl enable --now docker.service
 ```
 
-The backend service receives Docker access through `SupplementaryGroups=docker`. Docker access is effectively host-administrator access; the application runs user-submitted code, so use a host appropriate for that workload. Existing container limits remain in effect.
+The backend service receives Docker access through `SupplementaryGroups=docker`. Docker access is effectively host-administrator access; the application runs user-submitted code in containers that share the host kernel, so use a host appropriate for that workload and give site credentials only to trusted users. Existing container limits remain in effect.
+
+## Access credentials
+
+The site uses Caddy Basic Auth. Password hashes are kept only on the server in `/etc/caddy/auth/rust-lab.users`, which the deployment script never overwrites. Create it before the first deployment; `caddy hash-password` prompts for the password:
+
+```sh
+install -d -m 0750 -o root -g caddy /etc/caddy/auth
+printf '%s %s\n' alice "$(caddy hash-password)" > /etc/caddy/auth/rust-lab.users
+chown root:caddy /etc/caddy/auth/rust-lab.users
+chmod 0640 /etc/caddy/auth/rust-lab.users
+```
+
+Each line has the form `username bcrypt-hash`. Append lines for more users. To use the same accounts as go-lab, make one file a symlink to the other. After editing the file outside a deployment, run `systemctl reload caddy.service`. The script refuses to deploy if the file is missing, has no user lines, or is unreadable by the `caddy` user.
 
 ## First installation
 
@@ -85,6 +98,7 @@ The deployment script refreshes the installed update command after a successful 
 /var/lib/rust-lab/                           systemd-managed runtime state
 /etc/systemd/system/rust-lab.service
 /etc/caddy/sites/rust-lab.caddy
+/etc/caddy/auth/rust-lab.users                Basic Auth users (administrator-managed)
 ```
 
 Each release includes its own Docker image setting so a rollback uses the matching runner. Previous release directories and Docker image tags are retained. Remove old versions you no longer need after checking `readlink -f /opt/rust-lab/current`; keep the matching image for any release you may restore. Temporary clone directories are removed automatically.
@@ -102,7 +116,7 @@ cat /opt/rust-lab/current/REVISION
 
 The deployment check uses local HTTP; DNS and certificate issuance must also work for the public HTTPS URL. If port 3001 is occupied by another process, stop that process before deploying.
 
-The current backend rate limit is 30 runner requests per minute per connection-source IP. Behind Caddy, visitors share the loopback address and therefore share that limit. Health checks are exempt. The deployment does not change that application behavior.
+The backend rate limit is 30 runner requests per minute per client IP; health checks are exempt. The service sets `TRUST_FORWARDED_FOR=true`, so for connections from loopback the backend uses the rightmost `X-Forwarded-For` entry, which Caddy sets to the real client address. Other connections and other entries in the header are ignored, so clients cannot choose their rate-limit identity.
 
 For manual configuration changes, validate before reloading:
 

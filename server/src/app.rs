@@ -26,7 +26,7 @@ struct AppState {
 pub fn router(config: Config) -> Router {
     let state = Arc::new(AppState {
         static_root: config.static_root,
-        security: Security::new(config.allowed_origins),
+        security: Security::new(config.allowed_origins, config.trust_forwarded_for),
         runner: Runner::new(config.runner_image),
     });
     Router::new().fallback(handle).with_state(state)
@@ -124,7 +124,9 @@ async fn dispatch(
             "maxSourceBytes": MAX_SOURCE_BYTES,
         })));
     }
-    state.security.check_rate(address.ip())?;
+    state
+        .security
+        .check_rate(state.security.client_ip(address.ip(), request.headers()))?;
     if path == "/api/version" {
         return Ok(json_response(state.runner.version().await?));
     }

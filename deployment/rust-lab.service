@@ -17,6 +17,7 @@ Environment=HOST=127.0.0.1
 Environment=PORT=3001
 Environment=STATIC_ROOT=/opt/rust-lab/current/frontend
 Environment=ALLOWED_ORIGINS=https://rust-lab.rasc.ch
+Environment=TRUST_FORWARDED_FOR=true
 Environment=DOCKER_HOST=unix:///var/run/docker.sock
 Environment=DOCKER_CONFIG=/var/lib/rust-lab/docker
 EnvironmentFile=/opt/rust-lab/current/runner.env

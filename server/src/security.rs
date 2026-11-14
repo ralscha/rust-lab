@@ -16,15 +16,32 @@ struct Bucket {
 
 pub struct Security {
     allowed_origins: HashSet<String>,
+    trust_forwarded_for: bool,
     requests: Mutex<HashMap<IpAddr, Bucket>>,
 }
 
 impl Security {
-    pub fn new(allowed_origins: HashSet<String>) -> Self {
+    pub fn new(allowed_origins: HashSet<String>, trust_forwarded_for: bool) -> Self {
         Self {
             allowed_origins,
+            trust_forwarded_for,
             requests: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// Uses the rightmost X-Forwarded-For entry only when a loopback reverse proxy sent it.
+    pub fn client_ip(&self, address: IpAddr, headers: &HeaderMap) -> IpAddr {
+        if !self.trust_forwarded_for || !address.is_loopback() {
+            return address;
+        }
+        headers
+            .get_all("x-forwarded-for")
+            .iter()
+            .next_back()
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.rsplit(',').next())
+            .and_then(|value| value.trim().parse().ok())
+            .unwrap_or(address)
     }
 
     pub fn check_origin(&self, headers: &HeaderMap) -> Result<Option<HeaderValue>, ApiError> {
@@ -81,5 +98,53 @@ impl Security {
         }
         entry.count += 1;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn forwarded(value: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-forwarded-for", HeaderValue::from_str(value).unwrap());
+        headers
+    }
+
+    #[test]
+    fn client_ip_trusts_only_rightmost_entry_from_loopback() {
+        let security = Security::new(HashSet::new(), true);
+        let proxy: IpAddr = "127.0.0.1".parse().unwrap();
+        let client: IpAddr = "203.0.113.1".parse().unwrap();
+        assert_eq!(
+            security.client_ip(proxy, &forwarded("198.51.100.9, 203.0.113.1")),
+            client
+        );
+        assert_eq!(security.client_ip(proxy, &forwarded("not-an-ip")), proxy);
+        let remote: IpAddr = "192.0.2.5".parse().unwrap();
+        assert_eq!(
+            security.client_ip(remote, &forwarded("203.0.113.1")),
+            remote
+        );
+    }
+
+    #[test]
+    fn client_ip_ignores_header_when_disabled() {
+        let security = Security::new(HashSet::new(), false);
+        let proxy: IpAddr = "127.0.0.1".parse().unwrap();
+        assert_eq!(security.client_ip(proxy, &forwarded("203.0.113.1")), proxy);
+    }
+
+    #[test]
+    fn forwarded_clients_get_separate_limits() {
+        let security = Security::new(HashSet::new(), true);
+        let proxy: IpAddr = "127.0.0.1".parse().unwrap();
+        let first = security.client_ip(proxy, &forwarded("203.0.113.1"));
+        let second = security.client_ip(proxy, &forwarded("203.0.113.2"));
+        for _ in 0..30 {
+            assert!(security.check_rate(first).is_ok());
+        }
+        assert!(security.check_rate(first).is_err());
+        assert!(security.check_rate(second).is_ok());
     }
 }

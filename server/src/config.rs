@@ -8,6 +8,7 @@ pub struct Config {
     pub port: u16,
     pub static_root: PathBuf,
     pub allowed_origins: HashSet<String>,
+    pub trust_forwarded_for: bool,
     pub runner_image: String,
 }
 
@@ -41,6 +42,7 @@ impl Config {
                 .filter(|origin| !origin.is_empty())
                 .map(str::to_owned)
                 .collect(),
+            trust_forwarded_for: env::var("TRUST_FORWARDED_FOR").is_ok_and(|value| value == "true"),
         })
     }
 }

@@ -68,7 +68,7 @@ The backend starts one fresh container per execution, formatting, or uncached me
 - An internal 30-second compilation/execution deadline. The backend allows 35 seconds including Docker startup, then force-removes the named container. HTTP handling has a 45-second deadline.
 - A combined 1 MiB stdout/stderr limit. Docker logging is disabled for these containers so output is not retained by the daemon's log driver.
 - At most four concurrent jobs. Each permit stays held through cleanup. Cancellation and output overflow trigger container removal; `--rm` removes containers on normal exit. The image's internal deadline also limits jobs if the backend exits unexpectedly.
-- Request bodies are limited to 64 KiB and source to 48 KiB. API operations are limited to 30 per client IP per minute. Health and preflight requests are exempt. Forwarded IP headers are not trusted.
+- Request bodies are limited to 64 KiB and source to 48 KiB. API operations are limited to 30 per client IP per minute. Health and preflight requests are exempt. Forwarded IP headers are ignored unless `TRUST_FORWARDED_FOR=true`; then only the rightmost `X-Forwarded-For` entry from a loopback proxy is used.
 
 Single-file source can use the standard library. Cargo manifests, downloaded crates, interactive stdin, host files, and outbound network access are unavailable.
 
