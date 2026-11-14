@@ -4,16 +4,16 @@ The Rust backend uses Axum and Tokio. It serves the Angular production build and
 
 ## Setup
 
-Install a stable Rust toolchain, a platform linker, and Docker. On Windows, use the MSVC C++ Build Tools and Docker Desktop in Linux container mode. Start Docker, then run from the repository root:
+Install Node.js, pnpm 12.18.0, a stable Rust toolchain, a platform linker, and Docker. On Windows, use the MSVC C++ Build Tools and Docker Desktop in Linux container mode. Start Docker, then run from the repository root:
 
 ```sh
-npm run runner:build
+pnpm run runner:build
 cargo run --locked -p rust-lab-server
 ```
 
 The one-time image build downloads the [official Rust image](https://hub.docker.com/_/rust) and installs rustfmt. Subsequent execution, formatting, and metadata lookup require no internet connection. The default image pins Rust 1.100.0. Building the Angular frontend still requires Node.js and its dependencies.
 
-`npm start` starts both Angular on port 4200 and the backend on port 3001. For production, `npm run build` builds the frontend and Rust release binary; `npm run serve` serves both on port 3001. The runner image is built separately. A deployed backend needs the Docker CLI, access to a **local Linux Docker daemon**, and the stable runner image. Select the local Docker context before starting it; the CLI honors Docker's normal context/environment settings.
+`pnpm start` starts both Angular on port 4200 and the backend on port 3001. For production, `pnpm run build` builds the frontend and Rust release binary; `pnpm run serve` serves both on port 3001. The runner image is built separately. A deployed backend needs the Docker CLI, access to a **local Linux Docker daemon**, and the stable runner image. Select the local Docker context before starting it; the CLI honors Docker's normal context/environment settings.
 
 The runner uses only stable Rust and edition 2024 for execution, tests, and formatting. A missing image or unavailable Docker daemon produces an explicit 503 error with the setup command. Runtime jobs use `--pull=never` and never download images or dependencies automatically.
 
@@ -95,4 +95,4 @@ Docker provides useful isolation for a local learning tool, but shares a kernel 
 | `../runner/Dockerfile` | Compiler image and internal deadline                                  |
 | `../runner/run.sh`     | Fixed compilation, execution, formatting, and metadata commands       |
 
-Use `cargo check --locked`, `cargo clippy --locked -- -D warnings`, and `npm run format:check` for build and style checks. No automated test suite is included.
+Use `cargo check --locked`, `cargo clippy --locked -- -D warnings`, and `pnpm run format:check` for build and style checks. No automated test suite is included.

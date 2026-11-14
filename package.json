@@ -2,6 +2,7 @@
   "name": "rust-lab",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@12.18.0",
   "type": "module",
   "scripts": {
     "start": "node scripts/dev.mjs",

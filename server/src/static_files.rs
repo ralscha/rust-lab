@@ -56,7 +56,7 @@ pub async fn serve(method: &Method, pathname: &str, root: &Path) -> Result<Respo
     let (canonical_root, canonical_file) = tokio::try_join!(fs::canonicalize(root), fs::canonicalize(&target))
         .map_err(|error| {
             if error.kind() == io::ErrorKind::NotFound {
-                ApiError::new(StatusCode::NOT_FOUND, "Frontend not built. Run npm run build, or open the Angular development server on port 4200.")
+                ApiError::new(StatusCode::NOT_FOUND, "Frontend not built. Run pnpm run build, or open the Angular development server on port 4200.")
             } else {
                 ApiError::internal(error)
             }

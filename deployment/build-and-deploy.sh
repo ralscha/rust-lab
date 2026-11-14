@@ -186,6 +186,9 @@ runner_image="rust-lab-runner:$(basename "$release_dir")"
 log 'Building the frontend and backend'
 (
   cd "$source_dir"
+  expected_pnpm=$(node -p "require('./package.json').packageManager")
+  actual_pnpm="pnpm@$(pnpm --version)"
+  [[ "$actual_pnpm" == "$expected_pnpm" ]] || die "Expected $expected_pnpm, but found $actual_pnpm."
   CI=true pnpm install --frozen-lockfile --config.engine-strict=true
   pnpm run build:client
   CARGO_TARGET_DIR="$APP_ROOT/cache/cargo" cargo build --release --locked -p rust-lab-server

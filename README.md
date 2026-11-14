@@ -12,28 +12,28 @@ Access the course online at [https://rust-lab.rasc.ch](https://rust-lab.rasc.ch)
 
 Install and start **Docker Desktop with Linux containers** (Windows/macOS), or Docker Engine (Linux). The backend needs access to the Docker CLI and daemon.
 
-Use Node.js, npm or pnpm, and a stable Rust toolchain with Cargo and a platform linker. On Windows, install Visual Studio Build Tools with the **Desktop development with C++** workload for the MSVC toolchain.
+Use Node.js, pnpm 12.18.0, and a stable Rust toolchain with Cargo and a platform linker. On Windows, install Visual Studio Build Tools with the **Desktop development with C++** workload for the MSVC toolchain.
 
 ```sh
-npm ci
-npm run runner:build
-npm start
+pnpm install --frozen-lockfile
+pnpm run runner:build
+pnpm start
 ```
 
 Open **http://127.0.0.1:4200**. This starts the Angular development server and compiles and starts the Rust API on **127.0.0.1:3001**. Angular proxies `/api` to the backend. Stop both with Ctrl+C. Angular reloads frontend edits automatically; restart after editing the Rust backend. The first start downloads and compiles backend dependencies. Submitted code executes in a new local container for each request.
 
-With pnpm, use `pnpm install --frozen-lockfile`, `pnpm runner:build`, then `pnpm start`. To run the processes separately, use `npm run dev:server` and `npm run dev:client` in two terminals.
+To run the processes separately, use `pnpm run dev:server` and `pnpm run dev:client` in two terminals.
 
-The runner image is a one-time build and includes stable Rust 1.100.0 and rustfmt. Execution and formatting always use edition 2024 and work offline once the image is built. Rebuild the image with `npm run runner:build` after updating the course, and restart the backend to refresh its compiler metadata.
+The runner image is a one-time build and includes stable Rust 1.100.0 and rustfmt. Execution and formatting always use edition 2024 and work offline once the image is built. Rebuild the image with `pnpm run runner:build` after updating the course, and restart the backend to refresh its compiler metadata.
 
 To serve a production build locally:
 
 ```sh
-npm run build
-npm run serve
+pnpm run build
+pnpm run serve
 ```
 
-Open **http://127.0.0.1:3001**. The Rust backend serves the Angular files and API. `npm run build` builds both the frontend and release binary; `build:client` and `build:server` build them separately. The binary is `target/release/rust-lab-server` (`.exe` on Windows) and can also be launched directly. Do not run both configurations simultaneously on port 3001.
+Open **http://127.0.0.1:3001**. The Rust backend serves the Angular files and API. `pnpm run build` builds both the frontend and release binary; `build:client` and `build:server` build them separately. The binary is `target/release/rust-lab-server` (`.exe` on Windows) and can also be launched directly. Do not run both configurations simultaneously on port 3001.
 
 ## Learn and experiment
 
@@ -84,9 +84,9 @@ Docker reduces the impact of mistakes in local experiments, but containers share
 For installation and updates on a Linux server with Caddy and systemd, see [deployment/README.md](deployment/README.md). The deployment script clones, builds, and installs the application at `rust-lab.rasc.ch`.
 
 ```sh
-npm run build             # Angular production build and Rust release binary
+pnpm run build            # Angular production build and Rust release binary
 cargo check --locked      # Rust compilation checks without producing a binary
-npm run format:check      # Prettier and rustfmt checks
+pnpm run format:check     # Prettier and rustfmt checks
 ```
 
 ## Primary references

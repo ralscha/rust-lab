@@ -16,7 +16,7 @@ The Rust backend serves both the Angular frontend and `/api`. Caddy is the publi
 Use a Linux server with systemd and these tools available in the **root shell's PATH**:
 
 - Git, curl, a C/C++ linker, and the usual GNU/Linux utilities, including `flock`.
-- A Node.js version supported by `package.json`, pnpm 12, and a stable Rust toolchain with Cargo.
+- A Node.js version supported by `package.json`, pnpm 12.18.0, and a stable Rust toolchain with Cargo.
 - Docker Engine with `docker.service`, a `docker` group, and the local socket `/var/run/docker.sock`.
 - Caddy with `caddy.service` and the `caddy` CLI.
 - SSH access to `git@github.com:ralscha/rust-lab.git` from the account running the script. Set up its SSH key and GitHub host key before deploying.

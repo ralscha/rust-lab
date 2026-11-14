@@ -126,7 +126,7 @@ impl Runner {
         let (Some(version), Some(hash), Some(date)) = (version, hash, date) else {
             return Err(ApiError::new(
                 StatusCode::SERVICE_UNAVAILABLE,
-                "The local runner did not return compiler metadata. Rebuild it with npm run runner:build.",
+                "The local runner did not return compiler metadata. Rebuild it with pnpm run runner:build.",
             ));
         };
         if !output.status.success() {
@@ -482,6 +482,6 @@ async fn remove_container(name: &str) {
 fn unavailable() -> ApiError {
     ApiError::new(
         StatusCode::SERVICE_UNAVAILABLE,
-        "Local Docker runner unavailable. Start Docker with Linux containers and run npm run runner:build.",
+        "Local Docker runner unavailable. Start Docker with Linux containers and run pnpm run runner:build.",
     )
 }
