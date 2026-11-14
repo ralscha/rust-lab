@@ -29,47 +29,39 @@ Point the `rust-lab.rasc.ch` A/AAAA records to this server and allow inbound TCP
 systemctl enable --now docker.service
 ```
 
-The backend service receives Docker access through `SupplementaryGroups=docker`. Docker access is effectively host-administrator access; the application runs user-submitted code in containers that share the host kernel by default. Keep Basic Auth enabled and give site credentials only to trusted users until deployment is moved to a dedicated runner host and a stronger runtime is configured. Existing container limits remain in effect.
+The backend service receives Docker access through `SupplementaryGroups=docker`. Docker access is effectively host-administrator access. The production server is a dedicated Debian 13 VM, and runner containers use gVisor's `runsc` runtime.
 
-## Preparing a dedicated gVisor runner host
+## Runner isolation and access
 
-The backend can opt in to Docker's gVisor runtime, but this repository cannot provision or configure the host. Before considering public unauthenticated access, move the service and its Docker daemon to a dedicated VM with no unrelated workloads or secrets, install gVisor, and register `runsc` with Docker following the [gVisor Docker setup](https://gvisor.dev/docs/user_guide/quick_start/docker/). The backend still requires Docker access, so treat that VM as disposable and keep its management plane and credentials separate.
+Docker has `runsc` registered as a runtime, and Rust Lab selects it through `/etc/rust-lab/runner-runtime.env`:
 
-On that host, verify Docker reports the runtime:
-
-```sh
-docker info --format '{{json .Runtimes}}'
+```text
+RUNNER_RUNTIME=runsc
 ```
 
-Then opt in by creating `/etc/rust-lab/runner-runtime.env`:
+The systemd service reads this administrator-managed file and deployments preserve it. A runner smoke test verifies that Rust jobs execute using the configured runtime.
 
-```sh
-install -d -m 0755 /etc/rust-lab
-printf 'RUNNER_RUNTIME=runsc\n' > /etc/rust-lab/runner-runtime.env
-chmod 0644 /etc/rust-lab/runner-runtime.env
-```
+The backend limits runner work to one active job per client IP and 120 jobs per rolling hour across all clients. It also applies a 30-request-per-minute per-IP limit. The hourly count is in memory and resets when the backend restarts.
 
-The service reads this optional file on restart; deployments preserve it. Only `runsc` is accepted, and the deployment's compile-and-run check fails if Docker cannot start a job using it.
-
-The backend also enforces one active job per client IP and a shared 120-job rolling hourly quota. To try the site without Basic Auth after confirming the dedicated VM, gVisor runtime, and runner behavior, explicitly deploy with:
+Caddy uses Basic Auth by default. Public access is an explicit deployment option:
 
 ```sh
 PUBLIC_ACCESS=true /opt/rust-lab/deploy-rust-lab
 ```
 
-Public mode is off by default. On an existing server, first deploy once without `PUBLIC_ACCESS=true` to install the updated deployment script; the old script does not understand the opt-in flag and will keep Basic Auth enabled. Then run the command above. It fails unless `runsc` is installed, the server config explicitly selects `runsc`, Docker reports the runtime, and the runner is not disabled; the deployment also tests a job before reloading Caddy. To return to Basic Auth, create a valid `/etc/caddy/auth/rust-lab.users` file and deploy without `PUBLIC_ACCESS=true`. Every subsequent deployment must explicitly include `PUBLIC_ACCESS=true` to keep the site public.
+The public template is installed only when `PUBLIC_ACCESS=true` is set. Deployment verifies the `runsc` executable, the Docker runtime registration, the runner configuration, and a successful runner job before reloading Caddy. Without this option, deployment installs the authenticated template.
 
-For an emergency stop without changing Caddy access, disable runner jobs immediately while leaving static pages and health checks available:
+The runner can be disabled immediately without stopping static pages or health checks:
 
 ```sh
 install -m 0644 /dev/null /etc/rust-lab/runner-disabled
 ```
 
-Remove that specific file to re-enable jobs. This stops new runner requests; a job already in progress may finish. Alternatively, `RUNNER_ENABLED=false` in `/etc/rust-lab/runner-runtime.env` disables the runner on service start.
+The presence of this file blocks new runner requests; a job already in progress may finish. Remove the file to re-enable jobs. `RUNNER_ENABLED=false` in `/etc/rust-lab/runner-runtime.env` disables runner work when the service starts.
 
 ## Access credentials
 
-Authenticated mode uses Caddy Basic Auth. Password hashes are kept only on the server in `/etc/caddy/auth/rust-lab.users`, which the deployment script never overwrites. Create it before the first authenticated deployment; `caddy hash-password` prompts for the password:
+Authenticated mode uses Caddy Basic Auth. Password hashes are kept on the server in `/etc/caddy/auth/rust-lab.users`, which the deployment script does not overwrite. Create the file for authenticated deployments; `caddy hash-password` prompts for the password:
 
 ```sh
 install -d -m 0750 -o root -g caddy /etc/caddy/auth
@@ -80,9 +72,9 @@ chmod 0640 /etc/caddy/auth/rust-lab.users
 
 Each line has the form `username bcrypt-hash`. Append lines for more users. To use the same accounts as go-lab, make one file a symlink to the other. After editing the file outside a deployment, run `systemctl reload caddy.service`. The script requires this file in authenticated mode and checks that it has user lines and is readable by the `caddy` user.
 
-## First installation
+## Install and start
 
-Copy `build-and-deploy.sh` from this folder to the server. In a root shell with the prerequisites available, run:
+Run `build-and-deploy.sh` as root on the server, with the prerequisites available:
 
 ```sh
 bash ./build-and-deploy.sh
@@ -97,10 +89,10 @@ It will:
 5. Create the `rust-lab` system account and install the systemd unit.
 6. Install the authenticated or public Caddy site template. Add an import to `/etc/caddy/Caddyfile` if the site is not already included, then validate the full Caddy configuration.
 7. Switch `/opt/rust-lab/current`, start the backend, check its health/compiler metadata, and compile and run a small Rust program.
-8. Reload Caddy, or enable and start it on the first installation.
+8. Reload Caddy, or enable and start it.
 9. Install the update command at `/opt/rust-lab/deploy-rust-lab`.
 
-Existing Caddy sites stay in the main configuration. An existing glob import that includes the installed site is reused. If `rust-lab.rasc.ch` is already defined in a different file, move that site to `/etc/caddy/sites/rust-lab.caddy` before the first deployment. This file is managed by the deployment script.
+The Rust Lab site is managed at `/etc/caddy/sites/rust-lab.caddy` and imported by `/etc/caddy/Caddyfile`. Keep the hostname defined in that site only.
 
 ## Install a new version
 
@@ -117,7 +109,7 @@ BRANCH=staging /opt/rust-lab/deploy-rust-lab
 REPO_URL=https://github.com/ralscha/rust-lab.git /opt/rust-lab/deploy-rust-lab
 ```
 
-The current service keeps running while the new version builds. Activation requires a short restart. Concurrent deployments are prevented with a lock. If activation or verification fails, the previous release and configuration files are restored and the previously running service is restarted. Build failures leave the current release active.
+The service keeps running while a release builds. Activation requires a short restart. A lock prevents concurrent deployments, and the deployment validates the candidate release before switching the active service.
 
 The deployment script refreshes the installed update command after a successful deployment. Customizations to the service or Caddy site should be made in the repository templates because each deployment installs them again.
 
@@ -140,7 +132,7 @@ The deployment script refreshes the installed update command after a successful 
 /etc/rust-lab/runner-disabled                 emergency runner-disable switch (optional)
 ```
 
-Each release includes its own Docker image setting so a rollback uses the matching runner. Previous release directories and Docker image tags are retained. Remove old versions you no longer need after checking `readlink -f /opt/rust-lab/current`; keep the matching image for any release you may restore. Temporary clone directories are removed automatically.
+Each release contains the backend, frontend, runner image setting, and source revision. `/opt/rust-lab/current` points to the active release. Temporary build directories are removed automatically.
 
 ## Status and troubleshooting
 
