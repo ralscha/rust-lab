@@ -11,6 +11,7 @@ pub struct Config {
     pub trust_forwarded_for: bool,
     pub runner_image: String,
     pub runner_runtime: Option<&'static str>,
+    pub runner_require_gvisor: bool,
     pub runner_enabled: bool,
 }
 
@@ -27,9 +28,14 @@ impl Config {
                     "PORT must be a valid TCP port.",
                 )
             })?;
+        let runner_require_gvisor = match env::var("RUNNER_REQUIRE_GVISOR") {
+            Ok(value) => parse_bool("RUNNER_REQUIRE_GVISOR", &value)?,
+            Err(env::VarError::NotPresent) => false,
+            Err(error) => return Err(error.into()),
+        };
         let runner_runtime = match env::var("RUNNER_RUNTIME") {
-            Ok(value) => parse_runner_runtime(Some(&value))?,
-            Err(env::VarError::NotPresent) => parse_runner_runtime(None)?,
+            Ok(value) => parse_runner_runtime(Some(&value), runner_require_gvisor)?,
+            Err(env::VarError::NotPresent) => parse_runner_runtime(None, runner_require_gvisor)?,
             Err(error) => return Err(error.into()),
         };
         let runner_enabled = match env::var("RUNNER_ENABLED") {
@@ -56,6 +62,7 @@ impl Config {
                 .collect(),
             trust_forwarded_for: env::var("TRUST_FORWARDED_FOR").is_ok_and(|value| value == "true"),
             runner_runtime,
+            runner_require_gvisor,
             runner_enabled,
         })
     }
@@ -72,7 +79,16 @@ fn parse_bool(name: &str, value: &str) -> Result<bool, io::Error> {
     }
 }
 
-fn parse_runner_runtime(value: Option<&str>) -> Result<Option<&'static str>, io::Error> {
+fn parse_runner_runtime(
+    value: Option<&str>,
+    require_gvisor: bool,
+) -> Result<Option<&'static str>, io::Error> {
+    if require_gvisor && value != Some("runsc") {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "RUNNER_REQUIRE_GVISOR=true requires RUNNER_RUNTIME=runsc. Refusing to use Docker's default runtime.",
+        ));
+    }
     match value {
         None | Some("") => Ok(None),
         Some("runsc") => Ok(Some("runsc")),
@@ -96,9 +112,25 @@ mod tests {
 
     #[test]
     fn runner_runtime_is_optional_or_runsc() {
-        assert_eq!(parse_runner_runtime(None).unwrap(), None);
-        assert_eq!(parse_runner_runtime(Some("")).unwrap(), None);
-        assert_eq!(parse_runner_runtime(Some("runsc")).unwrap(), Some("runsc"));
-        assert!(parse_runner_runtime(Some("unknown")).is_err());
+        assert_eq!(parse_runner_runtime(None, false).unwrap(), None);
+        assert_eq!(parse_runner_runtime(Some(""), false).unwrap(), None);
+        assert_eq!(
+            parse_runner_runtime(Some("runsc"), false).unwrap(),
+            Some("runsc")
+        );
+        assert!(parse_runner_runtime(Some("unknown"), false).is_err());
+    }
+
+    #[test]
+    fn required_gvisor_rejects_missing_empty_or_other_runtimes() {
+        for runtime in [None, Some(""), Some("runc")] {
+            let error = parse_runner_runtime(runtime, true).unwrap_err();
+            assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
+            assert!(error.to_string().contains("requires RUNNER_RUNTIME=runsc"));
+        }
+        assert_eq!(
+            parse_runner_runtime(Some("runsc"), true).unwrap(),
+            Some("runsc")
+        );
     }
 }

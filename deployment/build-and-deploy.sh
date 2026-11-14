@@ -96,13 +96,10 @@ check_caddy_users() {
 
 check_gvisor() {
   [[ -f "$RUNNER_CONFIG" ]] || die "Create $RUNNER_CONFIG with RUNNER_RUNTIME=runsc before enabling public access."
-  grep -qx 'RUNNER_RUNTIME=runsc' "$RUNNER_CONFIG" || \
-    die "$RUNNER_CONFIG must contain exactly RUNNER_RUNTIME=runsc for public access."
   command -v runsc >/dev/null 2>&1 || die 'The gVisor runsc executable is not installed.'
   runsc --version > "$work_dir/runsc-version.txt" || die 'Cannot run the gVisor runsc executable.'
   grep -Eq '^runsc version ' "$work_dir/runsc-version.txt" || die 'runsc did not report a gVisor version.'
-  if grep -Eq '^[[:space:]]*RUNNER_ENABLED=false([[:space:]]|$)' "$RUNNER_CONFIG" || \
-    [[ -e "$RUNNER_DISABLED_FILE" ]]; then
+  if [[ -e "$RUNNER_DISABLED_FILE" || -L "$RUNNER_DISABLED_FILE" ]]; then
     die 'The runner is disabled; public access cannot be enabled.'
   fi
   docker_local info --format '{{json .Runtimes}}' > "$work_dir/docker-runtimes.json" || \
@@ -206,7 +203,8 @@ install -m 0755 "$APP_ROOT/cache/cargo/release/rust-lab-server" "$release_dir/bi
 cp -R -- "$source_dir/dist/rust-lab/browser/." "$release_dir/frontend/"
 find "$release_dir/frontend" -type d -exec chmod 0755 {} +
 find "$release_dir/frontend" -type f -exec chmod 0644 {} +
-printf 'RUNNER_IMAGE=%s\n' "$runner_image" > "$release_dir/runner.env"
+# Loaded after the administrator's optional settings, on every service start.
+printf 'RUNNER_IMAGE=%s\nRUNNER_REQUIRE_GVISOR=%s\n' "$runner_image" "$PUBLIC_ACCESS" > "$release_dir/runner.env"
 git -C "$source_dir" rev-parse HEAD > "$release_dir/REVISION"
 
 if ! getent group rust-lab >/dev/null; then
@@ -241,6 +239,11 @@ else
 fi
 caddy validate --config "$CADDY_MAIN" --adapter caddyfile
 
+# Apply authentication before a backend that may use Docker's default runtime starts.
+if [[ "$PUBLIC_ACCESS" == false && "$caddy_was_running" == true ]]; then
+  systemctl reload caddy.service
+fi
+
 log 'Activating the new release'
 systemctl stop "$SERVICE" 2>/dev/null || [[ "$service_was_running" == false ]]
 switch_release "$release_dir"
@@ -253,18 +256,20 @@ systemctl start "$SERVICE"
 ready=false
 for ((attempt = 1; attempt <= 30; attempt++)); do
   if systemctl is-active --quiet "$SERVICE" && \
-    curl --fail --silent --max-time 2 http://127.0.0.1:3001/api/health > /dev/null; then
+    curl --fail --silent --max-time 2 http://127.0.0.1:3001/api/health > "$work_dir/health.json"; then
     ready=true
     break
   fi
   sleep 1
 done
 [[ "$ready" == true ]] || die 'Backend did not become healthy. Check journalctl -u rust-lab.service.'
-runner_smoke_enabled=true
-if [[ -e "$RUNNER_DISABLED_FILE" ]] || \
-  grep -Eq '^[[:space:]]*RUNNER_ENABLED=false([[:space:]]|$)' "$RUNNER_CONFIG" 2>/dev/null; then
-  runner_smoke_enabled=false
-fi
+# Use the running process's settings; systemd handles quoting and duplicate assignments.
+runner_smoke_enabled=$(node "$source_dir/deployment/check-runner-health.mjs" "$PUBLIC_ACCESS" "$work_dir/health.json")
+case "$runner_smoke_enabled" in
+  true) ;;
+  false) [[ "$PUBLIC_ACCESS" == false ]] || die 'Public access requires runner smoke tests.' ;;
+  *) die 'Runner health check returned an invalid smoke-test decision.' ;;
+esac
 
 if [[ "$runner_smoke_enabled" == true ]]; then
   curl --fail --silent --show-error --max-time 40 http://127.0.0.1:3001/api/version > "$work_dir/version.json"
@@ -290,7 +295,9 @@ else
 fi
 
 if [[ "$caddy_was_running" == true ]]; then
-  systemctl reload caddy.service
+  if [[ "$PUBLIC_ACCESS" == true ]]; then
+    systemctl reload caddy.service
+  fi
 else
   caddy_start_attempted=true
   systemctl enable --now caddy.service

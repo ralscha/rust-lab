@@ -21,12 +21,14 @@ struct AppState {
     static_root: PathBuf,
     security: Security,
     runner: Runner,
+    runner_require_gvisor: bool,
 }
 
 pub fn router(config: Config) -> Router {
     let state = Arc::new(AppState {
         static_root: config.static_root,
         security: Security::new(config.allowed_origins, config.trust_forwarded_for),
+        runner_require_gvisor: config.runner_require_gvisor,
         runner: Runner::new(
             config.runner_image,
             config.runner_runtime,
@@ -127,6 +129,9 @@ async fn dispatch(
             "provider": "Local Docker",
             "execution": "local",
             "maxSourceBytes": MAX_SOURCE_BYTES,
+            "runnerEnabled": state.runner.is_enabled()?,
+            "runnerRuntime": state.runner.runtime(),
+            "runnerRequiresGvisor": state.runner_require_gvisor,
         })));
     }
     let client_ip = state.security.client_ip(address.ip(), request.headers());

@@ -21,6 +21,7 @@ Environment=TRUST_FORWARDED_FOR=true
 Environment=DOCKER_HOST=unix:///var/run/docker.sock
 Environment=DOCKER_CONFIG=/var/lib/rust-lab/docker
 EnvironmentFile=-/etc/rust-lab/runner-runtime.env
+# Keep the release's public-access isolation requirement authoritative.
 EnvironmentFile=/opt/rust-lab/current/runner.env
 StateDirectory=rust-lab
 Restart=on-failure

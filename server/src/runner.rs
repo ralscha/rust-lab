@@ -193,14 +193,26 @@ impl Runner {
         receiver.await.map_err(ApiError::internal)?
     }
 
-    fn ensure_enabled(&self) -> Result<(), ApiError> {
+    pub fn runtime(&self) -> Option<&'static str> {
+        self.runtime
+    }
+
+    pub fn is_enabled(&self) -> Result<bool, ApiError> {
         if !self.enabled {
-            return Err(runner_disabled());
+            return Ok(false);
         }
         match std::fs::symlink_metadata(&self.disabled_file) {
-            Ok(_) => Err(runner_disabled()),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Ok(_) => Ok(false),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(true),
             Err(error) => Err(ApiError::internal(error)),
+        }
+    }
+
+    fn ensure_enabled(&self) -> Result<(), ApiError> {
+        if self.is_enabled()? {
+            Ok(())
+        } else {
+            Err(runner_disabled())
         }
     }
 }
@@ -266,65 +278,6 @@ fn runner_disabled() -> ApiError {
         StatusCode::SERVICE_UNAVAILABLE,
         "The local runner is disabled by the administrator.",
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use std::net::{IpAddr, Ipv4Addr};
-
-    use super::{Admission, AdmissionState, Arc, MAX_JOBS_PER_HOUR, Runner, StdMutex};
-
-    fn admission() -> Admission {
-        Admission {
-            state: Arc::new(StdMutex::new(AdmissionState::default())),
-        }
-    }
-
-    #[test]
-    fn a_client_can_hold_only_one_active_job() {
-        let admission = admission();
-        let client: IpAddr = "192.0.2.1".parse().unwrap();
-        let permit = admission
-            .reserve(client)
-            .unwrap_or_else(|_| panic!("first client job should be admitted"));
-        assert!(admission.reserve(client).is_err());
-        drop(permit);
-        assert!(admission.reserve(client).is_ok());
-    }
-
-    #[test]
-    fn runner_job_quota_is_shared_across_clients() {
-        let admission = admission();
-        let permits: Vec<_> = (1..=MAX_JOBS_PER_HOUR)
-            .map(|last| {
-                admission
-                    .reserve(IpAddr::V4(Ipv4Addr::new(192, 0, 2, last as u8)))
-                    .unwrap_or_else(|_| panic!("job should fit within the global quota"))
-            })
-            .collect();
-        let next_client: IpAddr = "198.51.100.1".parse().unwrap();
-        assert!(admission.reserve(next_client).is_err());
-        drop(permits);
-    }
-
-    #[test]
-    fn disable_file_stops_runner_jobs_without_restart() {
-        let disabled_file = std::env::temp_dir().join(format!(
-            "rust-lab-runner-disabled-{}-{}",
-            std::process::id(),
-            super::NEXT_JOB.fetch_add(1, super::Ordering::Relaxed)
-        ));
-        let runner = Runner::new(
-            "rust-lab-runner:test".into(),
-            None,
-            true,
-            disabled_file.clone(),
-        );
-        assert!(runner.ensure_enabled().is_ok());
-        std::fs::write(&disabled_file, []).expect("create emergency-disable marker");
-        assert!(runner.ensure_enabled().is_err());
-        std::fs::remove_file(disabled_file).expect("remove emergency-disable marker");
-    }
 }
 
 fn docker() -> Command {
@@ -484,4 +437,79 @@ fn unavailable() -> ApiError {
         StatusCode::SERVICE_UNAVAILABLE,
         "Local Docker runner unavailable. Start Docker with Linux containers and run pnpm run runner:build.",
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use std::net::{IpAddr, Ipv4Addr};
+
+    use super::{Admission, AdmissionState, Arc, MAX_JOBS_PER_HOUR, Runner, StdMutex};
+
+    fn admission() -> Admission {
+        Admission {
+            state: Arc::new(StdMutex::new(AdmissionState::default())),
+        }
+    }
+
+    #[test]
+    fn a_client_can_hold_only_one_active_job() {
+        let admission = admission();
+        let client: IpAddr = "192.0.2.1".parse().unwrap();
+        let permit = admission
+            .reserve(client)
+            .unwrap_or_else(|_| panic!("first client job should be admitted"));
+        assert!(admission.reserve(client).is_err());
+        drop(permit);
+        assert!(admission.reserve(client).is_ok());
+    }
+
+    #[test]
+    fn runner_job_quota_is_shared_across_clients() {
+        let admission = admission();
+        let permits: Vec<_> = (1..=MAX_JOBS_PER_HOUR)
+            .map(|last| {
+                admission
+                    .reserve(IpAddr::V4(Ipv4Addr::new(192, 0, 2, last as u8)))
+                    .unwrap_or_else(|_| panic!("job should fit within the global quota"))
+            })
+            .collect();
+        let next_client: IpAddr = "198.51.100.1".parse().unwrap();
+        assert!(admission.reserve(next_client).is_err());
+        drop(permits);
+    }
+
+    #[test]
+    fn disable_file_stops_runner_jobs_without_restart() {
+        let disabled_file = std::env::temp_dir().join(format!(
+            "rust-lab-runner-disabled-{}-{}",
+            std::process::id(),
+            super::NEXT_JOB.fetch_add(1, super::Ordering::Relaxed)
+        ));
+        let runner = Runner::new(
+            "rust-lab-runner:test".into(),
+            None,
+            true,
+            disabled_file.clone(),
+        );
+        assert!(runner.ensure_enabled().is_ok());
+        assert!(runner.is_enabled().unwrap_or(false));
+        std::fs::write(&disabled_file, []).expect("create emergency-disable marker");
+        assert!(runner.ensure_enabled().is_err());
+        assert!(!runner.is_enabled().unwrap_or(true));
+        std::fs::remove_file(disabled_file).expect("remove emergency-disable marker");
+        assert!(runner.is_enabled().unwrap_or(false));
+    }
+
+    #[test]
+    fn configured_disable_is_reported_without_a_marker() {
+        let runner = Runner::new(
+            "rust-lab-runner:test".into(),
+            Some("runsc"),
+            false,
+            std::env::temp_dir().join("rust-lab-unused-disable-marker"),
+        );
+        assert_eq!(runner.runtime(), Some("runsc"));
+        assert!(!runner.is_enabled().unwrap_or(true));
+        assert!(runner.ensure_enabled().is_err());
+    }
 }

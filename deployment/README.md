@@ -2,12 +2,13 @@
 
 Deploys `git@github.com:ralscha/rust-lab.git`, branch `main`, to **https://rust-lab.rasc.ch**. The install/update script follows the same clone-and-build workflow as kcal-counter.
 
-| File                  | Purpose                                                        |
-| --------------------- | -------------------------------------------------------------- |
-| `build-and-deploy.sh` | Clones, builds, installs, checks, and starts a release.        |
-| `rust-lab.service`    | Runs the Rust backend as the `rust-lab` system user.           |
-| `Caddyfile`           | HTTPS site with Basic Auth, and reverse proxy to `127.0.0.1:3001`. |
-| `Caddyfile.public`    | Opt-in public HTTPS site without Basic Auth; deployment-gated on gVisor. |
+| File                      | Purpose                                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| `build-and-deploy.sh`     | Clones, builds, installs, checks, and starts a release.                                        |
+| `rust-lab.service`        | Runs the Rust backend as the `rust-lab` system user.                                           |
+| `Caddyfile`               | HTTPS site with Basic Auth, and reverse proxy to `127.0.0.1:3001`.                             |
+| `Caddyfile.public`        | Opt-in public HTTPS site without Basic Auth; deployment-gated on gVisor.                       |
+| `check-runner-health.mjs` | Validates the running backend's isolation policy and decides whether to smoke-test the runner. |
 
 The Rust backend serves both the Angular frontend and `/api`. Caddy is the public entry point. The runner always uses stable Rust and edition 2024.
 
@@ -18,7 +19,7 @@ Use a Linux server with systemd and these tools available in the **root shell's 
 - Git, curl, a C/C++ linker, and the usual GNU/Linux utilities, including `flock`.
 - A Node.js version supported by `package.json`, pnpm 12.18.0, and a stable Rust toolchain with Cargo.
 - Docker Engine with `docker.service`, a `docker` group, and the local socket `/var/run/docker.sock`.
-- Caddy with `caddy.service` and the `caddy` CLI.
+- Caddy 2.8 or newer with `caddy.service` and the `caddy` CLI.
 - SSH access to `git@github.com:ralscha/rust-lab.git` from the account running the script. Set up its SSH key and GitHub host key before deploying.
 
 The script installs the application, its system account, and service/configuration files. It does not install the build toolchains, Docker, or Caddy.
@@ -39,7 +40,7 @@ Docker has `runsc` registered as a runtime, and Rust Lab selects it through `/et
 RUNNER_RUNTIME=runsc
 ```
 
-The systemd service reads this administrator-managed file and deployments preserve it. A runner smoke test verifies that Rust jobs execute using the configured runtime.
+The systemd service reads this administrator-managed file and deployments preserve it. Systemd handles quoted values and duplicate assignments; the last assignment wins. Deployment reads the effective runner settings from the backend's health response, then smoke-tests enabled runners.
 
 The backend limits runner work to one active job per client IP and 120 jobs per rolling hour across all clients. It also applies a 30-request-per-minute per-IP limit. The hourly count is in memory and resets when the backend restarts.
 
@@ -49,7 +50,9 @@ Caddy uses Basic Auth by default. Public access is an explicit deployment option
 PUBLIC_ACCESS=true /opt/rust-lab/deploy-rust-lab
 ```
 
-The public template is installed only when `PUBLIC_ACCESS=true` is set. Deployment verifies the `runsc` executable, the Docker runtime registration, the runner configuration, and a successful runner job before reloading Caddy. Without this option, deployment installs the authenticated template.
+The public template is installed only when `PUBLIC_ACCESS=true` is set. Deployment verifies the `runsc` executable, the Docker runtime registration, the backend's effective runner configuration, and a successful runner job before reloading Caddy. Each public release stores `RUNNER_REQUIRE_GVISOR=true` in its mandatory `runner.env`, loaded after the administrator-managed settings. The backend refuses to start unless the effective `RUNNER_RUNTIME` is `runsc`, including after restarts if the administrator-managed file disappears or its runtime setting is cleared. Public deployment also requires the runner to be enabled.
+
+Without `PUBLIC_ACCESS=true`, deployment installs the authenticated template and applies it to an already-running Caddy before starting the new backend. This keeps a transition from public access protected even if the new backend uses Docker's default runtime.
 
 The runner can be disabled immediately without stopping static pages or health checks:
 
@@ -57,7 +60,7 @@ The runner can be disabled immediately without stopping static pages or health c
 install -m 0644 /dev/null /etc/rust-lab/runner-disabled
 ```
 
-The presence of this file blocks new runner requests; a job already in progress may finish. Remove the file to re-enable jobs. `RUNNER_ENABLED=false` in `/etc/rust-lab/runner-runtime.env` disables runner work when the service starts.
+The presence of this file blocks new runner requests; a job already in progress may finish. Remove the file to re-enable jobs. `RUNNER_ENABLED=false` in `/etc/rust-lab/runner-runtime.env` disables runner work when the service starts. Quoted values such as `RUNNER_ENABLED="false"` work too. Authenticated deployments skip runner smoke tests when the backend reports that runner work is disabled.
 
 ## Access credentials
 
@@ -120,7 +123,7 @@ The deployment script refreshes the installed update command after a successful 
 /opt/rust-lab/releases/<timestamp>-<commit>.<id>/
   bin/rust-lab-server
   frontend/
-  runner.env                                release-specific Docker image
+  runner.env                                release-specific Docker image and isolation requirement
   REVISION                                  full Git commit
 /opt/rust-lab/cache/cargo/                    reusable build cache
 /opt/rust-lab/deploy-rust-lab                 install/update command
@@ -132,7 +135,7 @@ The deployment script refreshes the installed update command after a successful 
 /etc/rust-lab/runner-disabled                 emergency runner-disable switch (optional)
 ```
 
-Each release contains the backend, frontend, runner image setting, and source revision. `/opt/rust-lab/current` points to the active release. Temporary build directories are removed automatically.
+Each release contains the backend, frontend, runner image setting, isolation requirement, and source revision. `/opt/rust-lab/current` points to the active release. Temporary build directories are removed automatically.
 
 ## Status and troubleshooting
 
@@ -146,6 +149,8 @@ cat /opt/rust-lab/current/REVISION
 ```
 
 The deployment check uses local HTTP; DNS and certificate issuance must also work for the public HTTPS URL. If port 3001 is occupied by another process, stop that process before deploying.
+
+Run the deployment policy regression tests with `node --test deployment/check-runner-health.test.mjs` and the backend tests with `cargo test --locked`.
 
 The backend applies a 30-request/minute per-IP limit, one active job per IP, and a shared 120-job rolling hourly quota. Health checks are exempt; cached compiler metadata does not consume a job slot. The service sets `TRUST_FORWARDED_FOR=true`, so for connections from loopback the backend uses the rightmost `X-Forwarded-For` entry, which Caddy sets to the real client address. Other connections and other entries in the header are ignored, so clients cannot choose their rate-limit identity. These in-process limits reset when the backend restarts and do not prevent distributed denial of service; use upstream network controls and monitoring as well.
 

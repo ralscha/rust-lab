@@ -19,19 +19,22 @@ The runner uses only stable Rust and edition 2024 for execution, tests, and form
 
 ## Configuration
 
-| Variable          | Default                                            | Purpose                                                               |
-| ----------------- | -------------------------------------------------- | --------------------------------------------------------------------- |
-| `HOST`            | `127.0.0.1`                                        | Backend bind address                                                  |
-| `PORT`            | `3001`                                             | Backend TCP port, 1–65535                                             |
-| `STATIC_ROOT`     | `dist/rust-lab/browser` in the build-time checkout | Angular build directory; relative overrides use the working directory |
-| `ALLOWED_ORIGINS` | `http://localhost:4200,http://127.0.0.1:4200`      | Additional browser origins; replaces defaults when set                |
-| `RUNNER_IMAGE`    | `rust-lab-runner:stable`                           | Stable compiler image                                                 |
-| `RUNNER_RUNTIME`  | unset                                              | Optional Docker runtime; only `runsc` (gVisor) is supported            |
-| `RUNNER_ENABLED`  | `true`                                             | Set to `false` to disable runner jobs at startup                       |
+| Variable                | Default                                            | Purpose                                                                       |
+| ----------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `HOST`                  | `127.0.0.1`                                        | Backend bind address                                                          |
+| `PORT`                  | `3001`                                             | Backend TCP port, 1–65535                                                     |
+| `STATIC_ROOT`           | `dist/rust-lab/browser` in the build-time checkout | Angular build directory; relative overrides use the working directory         |
+| `ALLOWED_ORIGINS`       | `http://localhost:4200,http://127.0.0.1:4200`      | Additional browser origins; replaces defaults when set                        |
+| `RUNNER_IMAGE`          | `rust-lab-runner:stable`                           | Stable compiler image                                                         |
+| `RUNNER_RUNTIME`        | unset                                              | Optional Docker runtime; only `runsc` (gVisor) is supported                   |
+| `RUNNER_REQUIRE_GVISOR` | `false`                                            | Refuse startup unless `RUNNER_RUNTIME=runsc`; persisted by public deployments |
+| `RUNNER_ENABLED`        | `true`                                             | Set to `false` to disable runner jobs at startup                              |
 
 Image overrides must use a stable compiler and implement `runner/run.sh`'s entrypoint contract: operation and optimization arguments, edition 2024, the startup marker on stderr, and the internal timeout. Only configure images you trust. Submitted requests cannot select a compiler image, channel, or edition.
 
 Set `RUNNER_RUNTIME=runsc` only after installing and registering gVisor's `runsc` runtime with the local Docker daemon. The default is unchanged when unset. An unavailable runtime causes runner requests to fail rather than silently falling back to the default runtime.
+
+Public deployments persist `RUNNER_REQUIRE_GVISOR=true` in the release's mandatory environment file. In this mode, an unset or empty `RUNNER_RUNTIME` is a startup error, even when the runner is disabled. The requirement remains active on subsequent restarts if the optional administrator-managed runtime file is lost or changed.
 
 The backend admits at most one active runner job per client IP and 120 runner jobs in each rolling hour across all clients. Health checks and cached compiler metadata do not consume the job quota. The rolling quota is held in memory and resets when the backend restarts. To stop new jobs immediately without restarting, create `/etc/rust-lab/runner-disabled`; remove that file to re-enable jobs. `RUNNER_ENABLED=false` is a persistent startup-level disable. Static files and `/api/health` remain available while runner operations return HTTP 503.
 
@@ -61,7 +64,7 @@ Runs `rustc --version --verbose` inside the stable runner image and returns `ver
 
 ### `GET /api/health`
 
-Reports backend availability, `provider: "Local Docker"`, `execution: "local"`, and the source-size limit. This does not probe Docker or start a container.
+Reports backend availability, `provider: "Local Docker"`, `execution: "local"`, and the source-size limit. `runnerEnabled` reflects the configured enable switch and emergency-disable marker, `runnerRuntime` is `"runsc"` or `null` for Docker's default, and `runnerRequiresGvisor` reports the startup isolation requirement. Deployment uses these effective settings to decide whether smoke tests are required. This does not probe Docker or start a container.
 
 ## Isolation and limits
 
@@ -95,4 +98,4 @@ Docker provides useful isolation for a local learning tool, but shares a kernel 
 | `../runner/Dockerfile` | Compiler image and internal deadline                                  |
 | `../runner/run.sh`     | Fixed compilation, execution, formatting, and metadata commands       |
 
-Use `cargo check --locked`, `cargo clippy --locked -- -D warnings`, and `pnpm run format:check` for build and style checks. No automated test suite is included.
+Use `cargo test --locked` and `node --test deployment/check-runner-health.test.mjs` for regression tests, and `cargo check --locked`, `cargo clippy --locked -- -D warnings`, and `pnpm run format:check` for build and style checks.
