@@ -27,7 +27,12 @@ pub fn router(config: Config) -> Router {
     let state = Arc::new(AppState {
         static_root: config.static_root,
         security: Security::new(config.allowed_origins, config.trust_forwarded_for),
-        runner: Runner::new(config.runner_image, config.runner_runtime),
+        runner: Runner::new(
+            config.runner_image,
+            config.runner_runtime,
+            config.runner_enabled,
+            PathBuf::from("/etc/rust-lab/runner-disabled"),
+        ),
     });
     Router::new().fallback(handle).with_state(state)
 }
@@ -124,11 +129,10 @@ async fn dispatch(
             "maxSourceBytes": MAX_SOURCE_BYTES,
         })));
     }
-    state
-        .security
-        .check_rate(state.security.client_ip(address.ip(), request.headers()))?;
+    let client_ip = state.security.client_ip(address.ip(), request.headers());
+    state.security.check_rate(client_ip)?;
     if path == "/api/version" {
-        return Ok(json_response(state.runner.version().await?));
+        return Ok(json_response(state.runner.version(client_ip).await?));
     }
     let execute = path == "/api/execute";
     let body = read_json(request).await?;
@@ -143,9 +147,12 @@ async fn dispatch(
         let mode = choice(&body, "mode", &["run", "test"], "run")?;
         let optimization = choice(&body, "optimization", &["debug", "release"], "debug")?;
         Ok(json_response(
-            state.runner.execute(code, mode, optimization).await?,
+            state
+                .runner
+                .execute(code, mode, optimization, client_ip)
+                .await?,
         ))
     } else {
-        Ok(json_response(state.runner.format(code).await?))
+        Ok(json_response(state.runner.format(code, client_ip).await?))
     }
 }

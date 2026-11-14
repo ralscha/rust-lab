@@ -27,10 +27,13 @@ The runner uses only stable Rust and edition 2024 for execution, tests, and form
 | `ALLOWED_ORIGINS` | `http://localhost:4200,http://127.0.0.1:4200`      | Additional browser origins; replaces defaults when set                |
 | `RUNNER_IMAGE`    | `rust-lab-runner:stable`                           | Stable compiler image                                                 |
 | `RUNNER_RUNTIME`  | unset                                              | Optional Docker runtime; only `runsc` (gVisor) is supported            |
+| `RUNNER_ENABLED`  | `true`                                             | Set to `false` to disable runner jobs at startup                       |
 
 Image overrides must use a stable compiler and implement `runner/run.sh`'s entrypoint contract: operation and optimization arguments, edition 2024, the startup marker on stderr, and the internal timeout. Only configure images you trust. Submitted requests cannot select a compiler image, channel, or edition.
 
 Set `RUNNER_RUNTIME=runsc` only after installing and registering gVisor's `runsc` runtime with the local Docker daemon. The default is unchanged when unset. An unavailable runtime causes runner requests to fail rather than silently falling back to the default runtime.
+
+The backend admits at most one active runner job per client IP and 120 runner jobs in each rolling hour across all clients. Health checks and cached compiler metadata do not consume the job quota. The rolling quota is held in memory and resets when the backend restarts. To stop new jobs immediately without restarting, create `/etc/rust-lab/runner-disabled`; remove that file to re-enable jobs. `RUNNER_ENABLED=false` is a persistent startup-level disable. Static files and `/api/health` remain available while runner operations return HTTP 503.
 
 ## API
 

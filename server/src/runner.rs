@@ -1,13 +1,16 @@
 use std::{
+    collections::{HashMap, VecDeque},
+    net::IpAddr,
+    path::PathBuf,
     process::{ExitStatus, Stdio},
     sync::{
-        Arc,
+        Arc, Mutex as StdMutex,
         atomic::{AtomicU64, AtomicUsize, Ordering},
     },
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-use axum::http::StatusCode;
+use axum::http::{HeaderValue, StatusCode, header};
 use serde_json::{Value, json};
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWriteExt},
@@ -18,14 +21,35 @@ use tokio::{
 use crate::error::ApiError;
 
 const MAX_OUTPUT_BYTES: usize = 1024 * 1024;
+const MAX_JOBS_PER_HOUR: usize = 120;
+const JOB_WINDOW: Duration = Duration::from_secs(60 * 60);
+const MAX_ACTIVE_JOBS_PER_IP: usize = 1;
 const RUNNER_STARTED: &str = "rust-lab:runner-started\n";
 static NEXT_JOB: AtomicU64 = AtomicU64::new(0);
 
 pub struct Runner {
     image: String,
     runtime: Option<&'static str>,
+    enabled: bool,
+    disabled_file: PathBuf,
     slots: Arc<Semaphore>,
+    admission: Admission,
     version_cache: Mutex<Option<(Instant, Value)>>,
+}
+
+struct Admission {
+    state: Arc<StdMutex<AdmissionState>>,
+}
+
+#[derive(Default)]
+struct AdmissionState {
+    job_starts: VecDeque<Instant>,
+    active_by_ip: HashMap<IpAddr, usize>,
+}
+
+struct AdmissionPermit {
+    state: Arc<StdMutex<AdmissionState>>,
+    address: IpAddr,
 }
 
 struct Output {
@@ -35,11 +59,21 @@ struct Output {
 }
 
 impl Runner {
-    pub fn new(image: String, runtime: Option<&'static str>) -> Self {
+    pub fn new(
+        image: String,
+        runtime: Option<&'static str>,
+        enabled: bool,
+        disabled_file: PathBuf,
+    ) -> Self {
         Self {
             image,
             runtime,
+            enabled,
+            disabled_file,
             slots: Arc::new(Semaphore::new(4)),
+            admission: Admission {
+                state: Arc::new(StdMutex::new(AdmissionState::default())),
+            },
             version_cache: Mutex::new(None),
         }
     }
@@ -49,9 +83,10 @@ impl Runner {
         code: &str,
         mode: &str,
         optimization: &str,
+        client_ip: IpAddr,
     ) -> Result<Value, ApiError> {
         let start = Instant::now();
-        let output = self.invoke(mode, optimization, code).await?;
+        let output = self.invoke(mode, optimization, code, client_ip).await?;
         Ok(json!({
             "success": output.status.success(),
             "stdout": output.stdout,
@@ -60,8 +95,8 @@ impl Runner {
         }))
     }
 
-    pub async fn format(&self, code: &str) -> Result<Value, ApiError> {
-        let output = self.invoke("format", "debug", code).await?;
+    pub async fn format(&self, code: &str, client_ip: IpAddr) -> Result<Value, ApiError> {
+        let output = self.invoke("format", "debug", code, client_ip).await?;
         Ok(json!({
             "success": output.status.success(),
             "code": if output.status.success() { output.stdout.as_str() } else { code },
@@ -70,14 +105,15 @@ impl Runner {
         }))
     }
 
-    pub async fn version(&self) -> Result<Value, ApiError> {
+    pub async fn version(&self, client_ip: IpAddr) -> Result<Value, ApiError> {
+        self.ensure_enabled()?;
         let mut cache = self.version_cache.lock().await;
         if let Some((expires, value)) = cache.as_ref()
             && Instant::now() < *expires
         {
             return Ok(value.clone());
         }
-        let output = self.invoke("version", "debug", "").await?;
+        let output = self.invoke("version", "debug", "", client_ip).await?;
         let field = |name: &str| {
             output
                 .stdout
@@ -113,13 +149,16 @@ impl Runner {
         operation: &str,
         optimization: &str,
         code: &str,
+        client_ip: IpAddr,
     ) -> Result<Output, ApiError> {
+        self.ensure_enabled()?;
         let permit = self.slots.clone().try_acquire_owned().map_err(|_| {
             ApiError::new(
                 StatusCode::TOO_MANY_REQUESTS,
                 "All local runner slots are busy. Please retry shortly.",
             )
         })?;
+        let admission_permit = self.admission.reserve(client_ip)?;
         let image = self.image.clone();
         let runtime = self.runtime;
         let timestamp = SystemTime::now()
@@ -148,9 +187,143 @@ impl Runner {
             };
             remove_container(&name).await;
             drop(permit);
+            drop(admission_permit);
             let _ = sender.send(result);
         });
         receiver.await.map_err(ApiError::internal)?
+    }
+
+    fn ensure_enabled(&self) -> Result<(), ApiError> {
+        if !self.enabled {
+            return Err(runner_disabled());
+        }
+        match std::fs::symlink_metadata(&self.disabled_file) {
+            Ok(_) => Err(runner_disabled()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(ApiError::internal(error)),
+        }
+    }
+}
+
+impl Admission {
+    fn reserve(&self, address: IpAddr) -> Result<AdmissionPermit, ApiError> {
+        let now = Instant::now();
+        let mut state = self.state.lock().map_err(ApiError::internal)?;
+        while state
+            .job_starts
+            .front()
+            .is_some_and(|started| now.duration_since(*started) >= JOB_WINDOW)
+        {
+            state.job_starts.pop_front();
+        }
+        if state
+            .active_by_ip
+            .get(&address)
+            .copied()
+            .unwrap_or_default()
+            >= MAX_ACTIVE_JOBS_PER_IP
+        {
+            return Err(ApiError::new(
+                StatusCode::TOO_MANY_REQUESTS,
+                "You already have a runner job in progress. Please wait for it to finish.",
+            )
+            .with_header(header::RETRY_AFTER, HeaderValue::from_static("40")));
+        }
+        if state.job_starts.len() >= MAX_JOBS_PER_HOUR {
+            let retry_after = state
+                .job_starts
+                .front()
+                .map(|started| {
+                    let remaining = JOB_WINDOW.saturating_sub(now.duration_since(*started));
+                    remaining.as_secs() + if remaining.subsec_nanos() > 0 { 1 } else { 0 }
+                })
+                .unwrap_or(1);
+            return Err(ApiError::new(
+                StatusCode::TOO_MANY_REQUESTS,
+                "The shared runner quota is exhausted. Please retry after the hourly limit resets.",
+            )
+            .with_header(header::RETRY_AFTER, HeaderValue::from(retry_after)));
+        }
+        state.job_starts.push_back(now);
+        state.active_by_ip.insert(address, 1);
+        Ok(AdmissionPermit {
+            state: self.state.clone(),
+            address,
+        })
+    }
+}
+
+impl Drop for AdmissionPermit {
+    fn drop(&mut self) {
+        if let Ok(mut state) = self.state.lock() {
+            state.active_by_ip.remove(&self.address);
+        }
+    }
+}
+
+fn runner_disabled() -> ApiError {
+    ApiError::new(
+        StatusCode::SERVICE_UNAVAILABLE,
+        "The local runner is disabled by the administrator.",
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use std::net::{IpAddr, Ipv4Addr};
+
+    use super::{Admission, AdmissionState, Arc, MAX_JOBS_PER_HOUR, Runner, StdMutex};
+
+    fn admission() -> Admission {
+        Admission {
+            state: Arc::new(StdMutex::new(AdmissionState::default())),
+        }
+    }
+
+    #[test]
+    fn a_client_can_hold_only_one_active_job() {
+        let admission = admission();
+        let client: IpAddr = "192.0.2.1".parse().unwrap();
+        let permit = admission
+            .reserve(client)
+            .unwrap_or_else(|_| panic!("first client job should be admitted"));
+        assert!(admission.reserve(client).is_err());
+        drop(permit);
+        assert!(admission.reserve(client).is_ok());
+    }
+
+    #[test]
+    fn runner_job_quota_is_shared_across_clients() {
+        let admission = admission();
+        let permits: Vec<_> = (1..=MAX_JOBS_PER_HOUR)
+            .map(|last| {
+                admission
+                    .reserve(IpAddr::V4(Ipv4Addr::new(192, 0, 2, last as u8)))
+                    .unwrap_or_else(|_| panic!("job should fit within the global quota"))
+            })
+            .collect();
+        let next_client: IpAddr = "198.51.100.1".parse().unwrap();
+        assert!(admission.reserve(next_client).is_err());
+        drop(permits);
+    }
+
+    #[test]
+    fn disable_file_stops_runner_jobs_without_restart() {
+        let disabled_file = std::env::temp_dir().join(format!(
+            "rust-lab-runner-disabled-{}-{}",
+            std::process::id(),
+            super::NEXT_JOB.fetch_add(1, super::Ordering::Relaxed)
+        ));
+        let runner = Runner::new(
+            "rust-lab-runner:test".into(),
+            None,
+            true,
+            disabled_file.clone(),
+        );
+        assert!(runner.ensure_enabled().is_ok());
+        std::fs::write(&disabled_file, []).expect("create emergency-disable marker");
+        assert!(runner.ensure_enabled().is_err());
+        std::fs::remove_file(disabled_file).expect("remove emergency-disable marker");
     }
 }
 

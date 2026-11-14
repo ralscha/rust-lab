@@ -11,6 +11,7 @@ pub struct Config {
     pub trust_forwarded_for: bool,
     pub runner_image: String,
     pub runner_runtime: Option<&'static str>,
+    pub runner_enabled: bool,
 }
 
 impl Config {
@@ -29,6 +30,11 @@ impl Config {
         let runner_runtime = match env::var("RUNNER_RUNTIME") {
             Ok(value) => parse_runner_runtime(Some(&value))?,
             Err(env::VarError::NotPresent) => parse_runner_runtime(None)?,
+            Err(error) => return Err(error.into()),
+        };
+        let runner_enabled = match env::var("RUNNER_ENABLED") {
+            Ok(value) => parse_bool("RUNNER_ENABLED", &value)?,
+            Err(env::VarError::NotPresent) => true,
             Err(error) => return Err(error.into()),
         };
         Ok(Self {
@@ -50,7 +56,19 @@ impl Config {
                 .collect(),
             trust_forwarded_for: env::var("TRUST_FORWARDED_FOR").is_ok_and(|value| value == "true"),
             runner_runtime,
+            runner_enabled,
         })
+    }
+}
+
+fn parse_bool(name: &str, value: &str) -> Result<bool, io::Error> {
+    match value {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("{name} must be true or false."),
+        )),
     }
 }
 
@@ -67,7 +85,14 @@ fn parse_runner_runtime(value: Option<&str>) -> Result<Option<&'static str>, io:
 
 #[cfg(test)]
 mod tests {
-    use super::parse_runner_runtime;
+    use super::{parse_bool, parse_runner_runtime};
+
+    #[test]
+    fn runner_enabled_requires_a_boolean() {
+        assert!(parse_bool("RUNNER_ENABLED", "true").unwrap());
+        assert!(!parse_bool("RUNNER_ENABLED", "false").unwrap());
+        assert!(parse_bool("RUNNER_ENABLED", "yes").is_err());
+    }
 
     #[test]
     fn runner_runtime_is_optional_or_runsc() {

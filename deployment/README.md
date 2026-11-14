@@ -6,7 +6,8 @@ Deploys `git@github.com:ralscha/rust-lab.git`, branch `main`, to **https://rust-
 | --------------------- | -------------------------------------------------------------- |
 | `build-and-deploy.sh` | Clones, builds, installs, checks, and starts a release.        |
 | `rust-lab.service`    | Runs the Rust backend as the `rust-lab` system user.           |
-| `Caddyfile`           | HTTPS site, Basic Auth, and reverse proxy to `127.0.0.1:3001`. |
+| `Caddyfile`           | HTTPS site with Basic Auth, and reverse proxy to `127.0.0.1:3001`. |
+| `Caddyfile.public`    | Opt-in public HTTPS site without Basic Auth; deployment-gated on gVisor. |
 
 The Rust backend serves both the Angular frontend and `/api`. Caddy is the public entry point. The runner always uses stable Rust and edition 2024.
 
@@ -48,11 +49,27 @@ printf 'RUNNER_RUNTIME=runsc\n' > /etc/rust-lab/runner-runtime.env
 chmod 0644 /etc/rust-lab/runner-runtime.env
 ```
 
-The service reads this optional file on restart; deployments preserve it. Only `runsc` is accepted, and the deployment's compile-and-run check fails if Docker cannot start a job using it. Keep Caddy Basic Auth enabled while validating the dedicated host and runtime. This opt-in does not by itself provide VM isolation, public abuse controls, or approval to remove authentication.
+The service reads this optional file on restart; deployments preserve it. Only `runsc` is accepted, and the deployment's compile-and-run check fails if Docker cannot start a job using it.
+
+The backend also enforces one active job per client IP and a shared 120-job rolling hourly quota. To try the site without Basic Auth after confirming the dedicated VM, gVisor runtime, and runner behavior, explicitly deploy with:
+
+```sh
+PUBLIC_ACCESS=true /opt/rust-lab/deploy-rust-lab
+```
+
+Public mode is off by default. On an existing server, first deploy once without `PUBLIC_ACCESS=true` to install the updated deployment script; the old script does not understand the opt-in flag and will keep Basic Auth enabled. Then run the command above. It fails unless `runsc` is installed, the server config explicitly selects `runsc`, Docker reports the runtime, and the runner is not disabled; the deployment also tests a job before reloading Caddy. To return to Basic Auth, create a valid `/etc/caddy/auth/rust-lab.users` file and deploy without `PUBLIC_ACCESS=true`. Every subsequent deployment must explicitly include `PUBLIC_ACCESS=true` to keep the site public.
+
+For an emergency stop without changing Caddy access, disable runner jobs immediately while leaving static pages and health checks available:
+
+```sh
+install -m 0644 /dev/null /etc/rust-lab/runner-disabled
+```
+
+Remove that specific file to re-enable jobs. This stops new runner requests; a job already in progress may finish. Alternatively, `RUNNER_ENABLED=false` in `/etc/rust-lab/runner-runtime.env` disables the runner on service start.
 
 ## Access credentials
 
-The site uses Caddy Basic Auth. Password hashes are kept only on the server in `/etc/caddy/auth/rust-lab.users`, which the deployment script never overwrites. Create it before the first deployment; `caddy hash-password` prompts for the password:
+Authenticated mode uses Caddy Basic Auth. Password hashes are kept only on the server in `/etc/caddy/auth/rust-lab.users`, which the deployment script never overwrites. Create it before the first authenticated deployment; `caddy hash-password` prompts for the password:
 
 ```sh
 install -d -m 0750 -o root -g caddy /etc/caddy/auth
@@ -61,7 +78,7 @@ chown root:caddy /etc/caddy/auth/rust-lab.users
 chmod 0640 /etc/caddy/auth/rust-lab.users
 ```
 
-Each line has the form `username bcrypt-hash`. Append lines for more users. To use the same accounts as go-lab, make one file a symlink to the other. After editing the file outside a deployment, run `systemctl reload caddy.service`. The script refuses to deploy if the file is missing, has no user lines, or is unreadable by the `caddy` user.
+Each line has the form `username bcrypt-hash`. Append lines for more users. To use the same accounts as go-lab, make one file a symlink to the other. After editing the file outside a deployment, run `systemctl reload caddy.service`. The script requires this file in authenticated mode and checks that it has user lines and is readable by the `caddy` user.
 
 ## First installation
 
@@ -78,7 +95,7 @@ It will:
 3. Build the stable Rust Docker runner with a unique tag for this release.
 4. Stage the binary, frontend, and runner image setting in a new release directory.
 5. Create the `rust-lab` system account and install the systemd unit.
-6. Install `/etc/caddy/sites/rust-lab.caddy`. Add an import to `/etc/caddy/Caddyfile` if the site is not already included, then validate the full Caddy configuration.
+6. Install the authenticated or public Caddy site template. Add an import to `/etc/caddy/Caddyfile` if the site is not already included, then validate the full Caddy configuration.
 7. Switch `/opt/rust-lab/current`, start the backend, check its health/compiler metadata, and compile and run a small Rust program.
 8. Reload Caddy, or enable and start it on the first installation.
 9. Install the update command at `/opt/rust-lab/deploy-rust-lab`.
@@ -119,6 +136,8 @@ The deployment script refreshes the installed update command after a successful 
 /etc/systemd/system/rust-lab.service
 /etc/caddy/sites/rust-lab.caddy
 /etc/caddy/auth/rust-lab.users                Basic Auth users (administrator-managed)
+/etc/rust-lab/runner-runtime.env              gVisor runtime setting (administrator-managed)
+/etc/rust-lab/runner-disabled                 emergency runner-disable switch (optional)
 ```
 
 Each release includes its own Docker image setting so a rollback uses the matching runner. Previous release directories and Docker image tags are retained. Remove old versions you no longer need after checking `readlink -f /opt/rust-lab/current`; keep the matching image for any release you may restore. Temporary clone directories are removed automatically.
@@ -136,7 +155,7 @@ cat /opt/rust-lab/current/REVISION
 
 The deployment check uses local HTTP; DNS and certificate issuance must also work for the public HTTPS URL. If port 3001 is occupied by another process, stop that process before deploying.
 
-The backend rate limit is 30 runner requests per minute per client IP; health checks are exempt. The service sets `TRUST_FORWARDED_FOR=true`, so for connections from loopback the backend uses the rightmost `X-Forwarded-For` entry, which Caddy sets to the real client address. Other connections and other entries in the header are ignored, so clients cannot choose their rate-limit identity. This is a basic per-IP limit, not a substitute for admission controls against distributed abuse.
+The backend applies a 30-request/minute per-IP limit, one active job per IP, and a shared 120-job rolling hourly quota. Health checks are exempt; cached compiler metadata does not consume a job slot. The service sets `TRUST_FORWARDED_FOR=true`, so for connections from loopback the backend uses the rightmost `X-Forwarded-For` entry, which Caddy sets to the real client address. Other connections and other entries in the header are ignored, so clients cannot choose their rate-limit identity. These in-process limits reset when the backend restarts and do not prevent distributed denial of service; use upstream network controls and monitoring as well.
 
 For manual configuration changes, validate before reloading:
 

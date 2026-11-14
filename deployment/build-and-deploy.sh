@@ -10,7 +10,10 @@ readonly SERVICE_FILE=/etc/systemd/system/rust-lab.service
 readonly CADDY_MAIN=/etc/caddy/Caddyfile
 readonly CADDY_SITE=/etc/caddy/sites/rust-lab.caddy
 readonly CADDY_USERS=/etc/caddy/auth/rust-lab.users
+readonly RUNNER_CONFIG=/etc/rust-lab/runner-runtime.env
+readonly RUNNER_DISABLED_FILE=/etc/rust-lab/runner-disabled
 readonly SITE=rust-lab.rasc.ch
+PUBLIC_ACCESS="${PUBLIC_ACCESS:-false}"
 
 work_dir=
 previous_release=
@@ -91,6 +94,26 @@ check_caddy_users() {
   fi
 }
 
+check_gvisor() {
+  [[ -f "$RUNNER_CONFIG" ]] || die "Create $RUNNER_CONFIG with RUNNER_RUNTIME=runsc before enabling public access."
+  grep -qx 'RUNNER_RUNTIME=runsc' "$RUNNER_CONFIG" || \
+    die "$RUNNER_CONFIG must contain exactly RUNNER_RUNTIME=runsc for public access."
+  command -v runsc >/dev/null 2>&1 || die 'The gVisor runsc executable is not installed.'
+  runsc --version > "$work_dir/runsc-version.txt" || die 'Cannot run the gVisor runsc executable.'
+  grep -Eq '^runsc version ' "$work_dir/runsc-version.txt" || die 'runsc did not report a gVisor version.'
+  if grep -Eq '^[[:space:]]*RUNNER_ENABLED=false([[:space:]]|$)' "$RUNNER_CONFIG" || \
+    [[ -e "$RUNNER_DISABLED_FILE" ]]; then
+    die 'The runner is disabled; public access cannot be enabled.'
+  fi
+  docker_local info --format '{{json .Runtimes}}' > "$work_dir/docker-runtimes.json" || \
+    die 'Cannot read Docker runtime configuration.'
+  node - "$work_dir/docker-runtimes.json" <<'NODE' || die 'Docker does not report the runsc runtime.'
+const fs = require('node:fs');
+const runtimes = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+if (!Object.hasOwn(runtimes, 'runsc')) process.exit(1);
+NODE
+}
+
 caddy_has_site() {
   node - "$work_dir/caddy.json" "$SITE" <<'NODE'
 const fs = require('node:fs');
@@ -107,6 +130,10 @@ NODE
 [[ $(uname -s) == Linux ]] || die 'Run this script on the Linux deployment server.'
 [[ $EUID -eq 0 ]] || die 'Run this script as root (with the build tools available in PATH).'
 [[ -n "$REPO_URL" && -n "$BRANCH" ]] || die 'REPO_URL and BRANCH must not be empty.'
+case "$PUBLIC_ACCESS" in
+  true|false) ;;
+  *) die 'PUBLIC_ACCESS must be true or false.' ;;
+esac
 for command_name in git node pnpm cargo docker systemctl systemd-analyze caddy curl \
   install flock mktemp readlink ln mv cp cat rm chmod find getent groupadd useradd id basename date sleep \
   grep runuser; do
@@ -135,7 +162,11 @@ systemctl is-enabled --quiet caddy.service && caddy_was_enabled=true
 systemctl is-active --quiet docker.service || die 'Start Docker first: systemctl enable --now docker'
 [[ $(docker_local info --format '{{.OSType}}') == linux ]] || die 'The local Docker daemon must run Linux containers.'
 getent group docker >/dev/null || die 'The Docker installation must provide the docker group.'
-check_caddy_users
+if [[ "$PUBLIC_ACCESS" == true ]]; then
+  check_gvisor
+else
+  check_caddy_users
+fi
 
 if [[ -s "$CADDY_MAIN" ]]; then
   caddy adapt --config "$CADDY_MAIN" --adapter caddyfile > "$work_dir/caddy.json"
@@ -189,7 +220,11 @@ backup_file "$CADDY_MAIN" caddy-main.previous
 backup_file "$CADDY_SITE" caddy-site.previous
 activation_started=true
 install -d -m 0755 /etc/caddy/sites
-install -m 0644 "$source_dir/deployment/Caddyfile" "$CADDY_SITE"
+if [[ "$PUBLIC_ACCESS" == true ]]; then
+  install -m 0644 "$source_dir/deployment/Caddyfile.public" "$CADDY_SITE"
+else
+  install -m 0644 "$source_dir/deployment/Caddyfile" "$CADDY_SITE"
+fi
 if [[ ! -e "$CADDY_MAIN" ]]; then
   install -m 0644 /dev/null "$CADDY_MAIN"
 fi
@@ -222,17 +257,24 @@ for ((attempt = 1; attempt <= 30; attempt++)); do
   sleep 1
 done
 [[ "$ready" == true ]] || die 'Backend did not become healthy. Check journalctl -u rust-lab.service.'
-curl --fail --silent --show-error --max-time 40 http://127.0.0.1:3001/api/version > "$work_dir/version.json"
-node - "$work_dir/version.json" <<'NODE'
+runner_smoke_enabled=true
+if [[ -e "$RUNNER_DISABLED_FILE" ]] || \
+  grep -Eq '^[[:space:]]*RUNNER_ENABLED=false([[:space:]]|$)' "$RUNNER_CONFIG" 2>/dev/null; then
+  runner_smoke_enabled=false
+fi
+
+if [[ "$runner_smoke_enabled" == true ]]; then
+  curl --fail --silent --show-error --max-time 40 http://127.0.0.1:3001/api/version > "$work_dir/version.json"
+  node - "$work_dir/version.json" <<'NODE'
 const fs = require('node:fs');
 const version = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 if (version.channel !== 'stable' || version.edition !== '2024') process.exit(1);
 NODE
-curl --fail --silent --show-error --max-time 45 \
-  -H 'Content-Type: application/json' \
-  --data '{"code":"fn main() { println!(\"deployment ok\"); }"}' \
-  http://127.0.0.1:3001/api/execute > "$work_dir/execute.json"
-node - "$work_dir/execute.json" <<'NODE'
+  curl --fail --silent --show-error --max-time 45 \
+    -H 'Content-Type: application/json' \
+    --data '{"code":"fn main() { println!(\"deployment ok\"); }"}' \
+    http://127.0.0.1:3001/api/execute > "$work_dir/execute.json"
+  node - "$work_dir/execute.json" <<'NODE'
 const fs = require('node:fs');
 const result = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 if (result.success !== true || result.stdout.trim() !== 'deployment ok') {
@@ -240,6 +282,9 @@ if (result.success !== true || result.stdout.trim() !== 'deployment ok') {
   process.exit(1);
 }
 NODE
+else
+  log 'Runner is disabled; skipping runner smoke tests.'
+fi
 
 if [[ "$caddy_was_running" == true ]]; then
   systemctl reload caddy.service
