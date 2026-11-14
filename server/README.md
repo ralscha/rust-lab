@@ -26,8 +26,11 @@ The runner uses only stable Rust and edition 2024 for execution, tests, and form
 | `STATIC_ROOT`     | `dist/rust-lab/browser` in the build-time checkout | Angular build directory; relative overrides use the working directory |
 | `ALLOWED_ORIGINS` | `http://localhost:4200,http://127.0.0.1:4200`      | Additional browser origins; replaces defaults when set                |
 | `RUNNER_IMAGE`    | `rust-lab-runner:stable`                           | Stable compiler image                                                 |
+| `RUNNER_RUNTIME`  | unset                                              | Optional Docker runtime; only `runsc` (gVisor) is supported            |
 
 Image overrides must use a stable compiler and implement `runner/run.sh`'s entrypoint contract: operation and optimization arguments, edition 2024, the startup marker on stderr, and the internal timeout. Only configure images you trust. Submitted requests cannot select a compiler image, channel, or edition.
+
+Set `RUNNER_RUNTIME=runsc` only after installing and registering gVisor's `runsc` runtime with the local Docker daemon. The default is unchanged when unset. An unavailable runtime causes runner requests to fail rather than silently falling back to the default runtime.
 
 ## API
 
@@ -72,7 +75,7 @@ The backend starts one fresh container per execution, formatting, or uncached me
 
 Single-file source can use the standard library. Cargo manifests, downloaded crates, interactive stdin, host files, and outbound network access are unavailable.
 
-Docker provides useful isolation for a local learning tool, but shares a kernel and is not a complete hostile-code security boundary. Docker daemon access is powerful: keep this backend local and never mount its Docker socket into runner containers. A public multi-user deployment needs a separately designed isolation boundary, such as dedicated VMs or a sandbox runtime, plus authentication and admission controls. See [Docker runtime controls](https://docs.docker.com/engine/containers/run/) and [Docker security](https://docs.docker.com/engine/security/).
+Docker provides useful isolation for a local learning tool, but shares a kernel and is not a complete hostile-code security boundary. Docker daemon access is powerful: keep this backend local and never mount its Docker socket into runner containers. A public multi-user deployment should run on a dedicated VM and use a stronger sandbox runtime such as gVisor, in addition to admission controls. This setting selects an already-installed runtime; it does not install or configure gVisor, create the VM, or make the deployment safe for unauthenticated access by itself. See [Docker runtime controls](https://docs.docker.com/engine/containers/run/), [Docker security](https://docs.docker.com/engine/security/), and [gVisor's Docker setup](https://gvisor.dev/docs/user_guide/quick_start/docker/).
 
 ## Code layout
 

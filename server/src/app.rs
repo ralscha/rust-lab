@@ -27,7 +27,7 @@ pub fn router(config: Config) -> Router {
     let state = Arc::new(AppState {
         static_root: config.static_root,
         security: Security::new(config.allowed_origins, config.trust_forwarded_for),
-        runner: Runner::new(config.runner_image),
+        runner: Runner::new(config.runner_image, config.runner_runtime),
     });
     Router::new().fallback(handle).with_state(state)
 }

@@ -23,6 +23,7 @@ static NEXT_JOB: AtomicU64 = AtomicU64::new(0);
 
 pub struct Runner {
     image: String,
+    runtime: Option<&'static str>,
     slots: Arc<Semaphore>,
     version_cache: Mutex<Option<(Instant, Value)>>,
 }
@@ -34,9 +35,10 @@ struct Output {
 }
 
 impl Runner {
-    pub fn new(image: String) -> Self {
+    pub fn new(image: String, runtime: Option<&'static str>) -> Self {
         Self {
             image,
+            runtime,
             slots: Arc::new(Semaphore::new(4)),
             version_cache: Mutex::new(None),
         }
@@ -119,6 +121,7 @@ impl Runner {
             )
         })?;
         let image = self.image.clone();
+        let runtime = self.runtime;
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_err(ApiError::internal)?
@@ -135,7 +138,7 @@ impl Runner {
         // Cleanup outlives the HTTP request. Keep its slot until the container is removed.
         tokio::spawn(async move {
             let result = {
-                let job = run_container(&name, &image, &args, &code);
+                let job = run_container(&name, &image, runtime, &args, &code);
                 tokio::select! {
                     result = tokio::time::timeout(Duration::from_secs(35), job) => {
                         result.unwrap_or_else(|_| Err(ApiError::new(StatusCode::GATEWAY_TIMEOUT, "Local execution timed out. The container was stopped.")))
@@ -162,41 +165,46 @@ fn docker() -> Command {
 async fn run_container(
     name: &str,
     image: &str,
+    runtime: Option<&str>,
     args: &[String; 2],
     code: &str,
 ) -> Result<Output, ApiError> {
-    let mut child = docker()
-        .args([
-            "run",
-            "--rm",
-            "--init",
-            "--interactive",
-            "--pull=never",
-            "--name",
-            name,
-            "--label",
-            "rust-lab.runner=true",
-            "--network=none",
-            "--read-only",
-            "--cap-drop=ALL",
-            "--security-opt=no-new-privileges=true",
-            "--user=10001:10001",
-            "--pids-limit=128",
-            "--cpus=1",
-            "--memory=512m",
-            "--memory-swap=512m",
-            "--ulimit=nofile=256:256",
-            "--ulimit=fsize=67108864:67108864",
-            "--ipc=none",
-            "--log-driver=none",
-            "--workdir=/work",
-            "--tmpfs",
-            "/work:rw,exec,nosuid,nodev,size=128m,uid=10001,gid=10001,mode=0700",
-            "--tmpfs",
-            "/tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700",
-            "--env=RUST_BACKTRACE=0",
-            image,
-        ])
+    let mut command = docker();
+    command.args([
+        "run",
+        "--rm",
+        "--init",
+        "--interactive",
+        "--pull=never",
+        "--name",
+        name,
+        "--label",
+        "rust-lab.runner=true",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=ALL",
+        "--security-opt=no-new-privileges=true",
+        "--user=10001:10001",
+        "--pids-limit=128",
+        "--cpus=1",
+        "--memory=512m",
+        "--memory-swap=512m",
+        "--ulimit=nofile=256:256",
+        "--ulimit=fsize=67108864:67108864",
+        "--ipc=none",
+        "--log-driver=none",
+        "--workdir=/work",
+        "--tmpfs",
+        "/work:rw,exec,nosuid,nodev,size=128m,uid=10001,gid=10001,mode=0700",
+        "--tmpfs",
+        "/tmp:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700",
+        "--env=RUST_BACKTRACE=0",
+    ]);
+    if let Some(runtime) = runtime {
+        command.args(["--runtime", runtime]);
+    }
+    let mut child = command
+        .arg(image)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

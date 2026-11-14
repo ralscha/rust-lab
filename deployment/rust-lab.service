@@ -20,6 +20,7 @@ Environment=ALLOWED_ORIGINS=https://rust-lab.rasc.ch
 Environment=TRUST_FORWARDED_FOR=true
 Environment=DOCKER_HOST=unix:///var/run/docker.sock
 Environment=DOCKER_CONFIG=/var/lib/rust-lab/docker
+EnvironmentFile=-/etc/rust-lab/runner-runtime.env
 EnvironmentFile=/opt/rust-lab/current/runner.env
 StateDirectory=rust-lab
 Restart=on-failure

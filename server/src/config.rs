@@ -10,6 +10,7 @@ pub struct Config {
     pub allowed_origins: HashSet<String>,
     pub trust_forwarded_for: bool,
     pub runner_image: String,
+    pub runner_runtime: Option<&'static str>,
 }
 
 impl Config {
@@ -25,6 +26,11 @@ impl Config {
                     "PORT must be a valid TCP port.",
                 )
             })?;
+        let runner_runtime = match env::var("RUNNER_RUNTIME") {
+            Ok(value) => parse_runner_runtime(Some(&value))?,
+            Err(env::VarError::NotPresent) => parse_runner_runtime(None)?,
+            Err(error) => return Err(error.into()),
+        };
         Ok(Self {
             host: env::var("HOST").unwrap_or_else(|_| "127.0.0.1".into()),
             port,
@@ -43,6 +49,31 @@ impl Config {
                 .map(str::to_owned)
                 .collect(),
             trust_forwarded_for: env::var("TRUST_FORWARDED_FOR").is_ok_and(|value| value == "true"),
+            runner_runtime,
         })
+    }
+}
+
+fn parse_runner_runtime(value: Option<&str>) -> Result<Option<&'static str>, io::Error> {
+    match value {
+        None | Some("") => Ok(None),
+        Some("runsc") => Ok(Some("runsc")),
+        Some(_) => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "RUNNER_RUNTIME must be empty or runsc.",
+        )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_runner_runtime;
+
+    #[test]
+    fn runner_runtime_is_optional_or_runsc() {
+        assert_eq!(parse_runner_runtime(None).unwrap(), None);
+        assert_eq!(parse_runner_runtime(Some("")).unwrap(), None);
+        assert_eq!(parse_runner_runtime(Some("runsc")).unwrap(), Some("runsc"));
+        assert!(parse_runner_runtime(Some("unknown")).is_err());
     }
 }

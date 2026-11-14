@@ -28,7 +28,27 @@ Point the `rust-lab.rasc.ch` A/AAAA records to this server and allow inbound TCP
 systemctl enable --now docker.service
 ```
 
-The backend service receives Docker access through `SupplementaryGroups=docker`. Docker access is effectively host-administrator access; the application runs user-submitted code in containers that share the host kernel, so use a host appropriate for that workload and give site credentials only to trusted users. Existing container limits remain in effect.
+The backend service receives Docker access through `SupplementaryGroups=docker`. Docker access is effectively host-administrator access; the application runs user-submitted code in containers that share the host kernel by default. Keep Basic Auth enabled and give site credentials only to trusted users until deployment is moved to a dedicated runner host and a stronger runtime is configured. Existing container limits remain in effect.
+
+## Preparing a dedicated gVisor runner host
+
+The backend can opt in to Docker's gVisor runtime, but this repository cannot provision or configure the host. Before considering public unauthenticated access, move the service and its Docker daemon to a dedicated VM with no unrelated workloads or secrets, install gVisor, and register `runsc` with Docker following the [gVisor Docker setup](https://gvisor.dev/docs/user_guide/quick_start/docker/). The backend still requires Docker access, so treat that VM as disposable and keep its management plane and credentials separate.
+
+On that host, verify Docker reports the runtime:
+
+```sh
+docker info --format '{{json .Runtimes}}'
+```
+
+Then opt in by creating `/etc/rust-lab/runner-runtime.env`:
+
+```sh
+install -d -m 0755 /etc/rust-lab
+printf 'RUNNER_RUNTIME=runsc\n' > /etc/rust-lab/runner-runtime.env
+chmod 0644 /etc/rust-lab/runner-runtime.env
+```
+
+The service reads this optional file on restart; deployments preserve it. Only `runsc` is accepted, and the deployment's compile-and-run check fails if Docker cannot start a job using it. Keep Caddy Basic Auth enabled while validating the dedicated host and runtime. This opt-in does not by itself provide VM isolation, public abuse controls, or approval to remove authentication.
 
 ## Access credentials
 
@@ -116,7 +136,7 @@ cat /opt/rust-lab/current/REVISION
 
 The deployment check uses local HTTP; DNS and certificate issuance must also work for the public HTTPS URL. If port 3001 is occupied by another process, stop that process before deploying.
 
-The backend rate limit is 30 runner requests per minute per client IP; health checks are exempt. The service sets `TRUST_FORWARDED_FOR=true`, so for connections from loopback the backend uses the rightmost `X-Forwarded-For` entry, which Caddy sets to the real client address. Other connections and other entries in the header are ignored, so clients cannot choose their rate-limit identity.
+The backend rate limit is 30 runner requests per minute per client IP; health checks are exempt. The service sets `TRUST_FORWARDED_FOR=true`, so for connections from loopback the backend uses the rightmost `X-Forwarded-For` entry, which Caddy sets to the real client address. Other connections and other entries in the header are ignored, so clients cannot choose their rate-limit identity. This is a basic per-IP limit, not a substitute for admission controls against distributed abuse.
 
 For manual configuration changes, validate before reloading:
 
